@@ -39,12 +39,11 @@ inspect-robots run --embodiment yam_arena --policy dream \
   --scorer task_score --max-steps 1200 --store-frames --log-dir ~/yam-eval/c4-dream
 ```
 
-The scripted demo is the same command with `--policy yam_scripted --max-steps 600`. The left arm, its gripper tilted
-50 degrees forward as a hand would be, pinches the red disc by its ridged rim (two flat ridges, one
-under each finger pad), lifts it out of its holder, carries it over
-column 5, lowers it into the slot's flared mouth and lets go. A straight-down grip cannot reach 21 cm up, and
-yam_arena's scripted waypoints only describe straight-down grips, so `task.py` adds a tilted one (see `PITCHED`).
-About 11 s (210 steps).
+The scripted demo is the same command with `--policy yam_scripted --max-steps 600`. The left arm takes the red disc
+by its two flat faces, as a hand does, lifts it out of its holder, carries it over column 5, lowers it into the
+slot's flared mouth and lets go. The gripper leans 40 degrees over toward the frame: a straight-down grip cannot
+reach 23 cm up, and yam_arena's scripted waypoints only describe straight-down grips, so `task.py` adds a leaning one
+(see `SIDE_GRIP`). About 14 s (280 steps).
 
 ## Scoring
 

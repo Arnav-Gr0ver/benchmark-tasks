@@ -90,8 +90,9 @@ def _funnel():
         centre = (s * (GAP / 2 + run), 0.0, rise)
         # turning about y by +45 degrees lowers a box's +x end: the front lip's inner (+x) end sits on the slot's edge
         lips.append((centre, (LIP_LEN, WIDTH + POST, LIP_T), (0.0, -s * LIP_DEG)))
+    # WHY slick: a disc that lands on a 45 degree lip must slide down it, and rubber-like friction (1.2) would hold it
     return Compound("frame_funnel", pos=(CX, 0.0, FRAME_TOP), size=(MOUTH, WIDTH + POST, LIP_RISE), color=YELLOW,
-                    boxes=tuple(lips))
+                    boxes=tuple(lips), friction=0.05)
 
 
 # The position (column, row), 0-based. Red to move; twelve discs, six each.
@@ -101,7 +102,7 @@ WIN = (4, 2)       # completes red's diagonal (6,0), (5,1), (4,2), (3,3): column
 BLOCK = (2, 0)     # completes blue's bottom row: column 3 from the left
 
 
-RIDGES = 16                    # a real disc's ridged rim: the gripper's pads press on flat ridges, not a round edge
+RIDGES = 16                    # a real disc's ridged rim; the disc stands in its holder on one of the flats
 
 
 def _placed(name, cell, color):
@@ -164,47 +165,54 @@ def score(objects) -> float:
 
 
 # -- scripted demo --------------------------------------------------------------------------------------------------
-# A hand drops a disc into a Connect Four frame tilted forward, not pointing straight down: a straight-down grip
-# cannot reach 21 cm up. yam_arena's scripted waypoints only turn the straight-down grip about the vertical (their
-# `yaw`), so the demo tags a tilted grip by passing PITCHED + the tilt as the yaw, and this file teaches
-# yam_arena.demo.grip_rotation to read that tag. Ordinary yaws (within a turn of 0) are unchanged.
-PITCHED = 100.0
-TILT = math.radians(50.0)      # the approach leans 50 degrees forward from straight down; fingers close along y
+# A hand holds a Connect Four disc by its two flat faces and reaches the frame's top leaning over, not pointing
+# straight down (a straight-down grip cannot reach 23 cm up). yam_arena's scripted waypoints only turn the
+# straight-down grip about the vertical (their `yaw`), so the demo tags its own grip by passing SIDE_GRIP as the yaw,
+# and this file teaches yam_arena.demo.grip_rotation to read that tag. Ordinary yaws (within a turn of 0) are unchanged.
+SIDE_GRIP = 100.0
+LEAN = math.radians(40.0)      # the gripper leans 40 degrees from straight down, toward the robot's right
 
 _plain_grip_rotation = getattr(_yam_demo.grip_rotation, "plain", _yam_demo.grip_rotation)
 
 
 def _grip_rotation(yaw: float = 0.0) -> np.ndarray:
-    if yaw < PITCHED / 2:
+    """SIDE_GRIP: the fingers close along x (front to back, onto the disc's faces) and the approach leans LEAN from
+    straight down toward -y."""
+    if yaw < SIDE_GRIP / 2:
         return _plain_grip_rotation(yaw)
-    a = -(yaw - PITCHED)
-    c, s = math.cos(a), math.sin(a)
-    return np.array([[c, 0.0, s], [0.0, 1.0, 0.0], [-s, 0.0, c]]) @ _plain_grip_rotation(0.0)
+    c, s = math.cos(-LEAN), math.sin(-LEAN)
+    lean = np.array([[1.0, 0.0, 0.0], [0.0, c, -s], [0.0, s, c]])
+    return lean @ _plain_grip_rotation(-math.pi / 2)
 
 
 _grip_rotation.plain = _plain_grip_rotation
 _yam_demo.grip_rotation = _grip_rotation
 
-GRIP = PITCHED + TILT
-PICK_Z = SPARE_RED.pos[2]              # the pads pinch the disc's rim across its middle
-DROP_Z = FRAME_TOP + 0.018             # the disc's bottom 2 mm above the slot, inside the funnel's mouth; the
-#                                        fingertips (10 mm ahead of and 8 mm below the TCP) clear the back lip
-TRAVEL_Z = DROP_Z + 0.03
+HOLD_ABOVE_CENTRE = 0.008                       # the pads hold the disc's faces from 2 mm below its centre to its top
+PICK_Z = SPARE_RED.pos[2] + HOLD_ABOVE_CENTRE   # the fingertips stay 6 mm above the holder's walls
+DROP_Z = FRAME_TOP + 0.004 + R + HOLD_ABOVE_CENTRE  # the disc's bottom 4 mm above the slot, inside the funnel's mouth
+#                                                 (19 mm wide there); the fingertips stay 9 mm above the funnel's lips
+TRAVEL_Z = DROP_Z + 0.025                       # carried, the disc's bottom passes 18 mm above the funnel's lips
+LIFT_Z = TOP + 0.12                             # WHY: leaning, the arm cannot reach TRAVEL_Z over the holder (it tops
+VIA_Y = 0.17                                    # out 21 cm up there), so it climbs on its way in, to just left of the frame
+RELEASE = 0.35 * FINGER_OPEN                    # open 16 mm a side: enough to let go, clear of everything
 
 
 def demo():
-    """The left arm, its gripper tilted forward, pinches the spare red disc by its rim, lifts it out of its holder,
-    carries it over column 5 and lets it drop in."""
-    f0, f1 = FINGER_OPEN, FINGER_CLOSED
+    """The left arm, leaning over, takes the spare red disc by its two flat faces, lifts it out of its holder,
+    carries it over column 5, lowers it into the slot's flared mouth and lets go."""
+    f0, f1, g = FINGER_OPEN, FINGER_CLOSED, SIDE_GRIP
     px, py = SPARE_RED.pos[:2]
     wx, wy = CX, col_y(WIN[0])
     return {"left": [
-        Waypoint(2.0, (px, py, PICK_Z + 0.06), f0, "above the disc", GRIP),
-        Waypoint(1.5, (px, py, PICK_Z), f0, "down", GRIP),
-        Waypoint(0.8, (px, py, PICK_Z), f1, "pinch the rim", GRIP),
-        Waypoint(1.5, (px, py, TRAVEL_Z), f1, "lift", GRIP),
-        Waypoint(2.0, (wx, wy, TRAVEL_Z), f1, "over column 5", GRIP),
-        Waypoint(1.2, (wx, wy, DROP_Z), f1, "down to the slot", GRIP),
-        Waypoint(0.6, (wx, wy, DROP_Z), f0, "let go", GRIP),
-        Waypoint(1.0, (wx, wy, TRAVEL_Z), f0, "up", GRIP),
+        Waypoint(2.0, (px, py, PICK_Z + 0.06), f0, "above the disc", g),
+        Waypoint(1.5, (px, py, PICK_Z), f0, "down", g),
+        Waypoint(0.8, (px, py, PICK_Z), f1, "hold its faces", g),
+        Waypoint(1.5, (px, py, LIFT_Z), f1, "lift", g),
+        Waypoint(2.0, (wx, VIA_Y, TRAVEL_Z), f1, "up beside the frame", g),
+        Waypoint(2.5, (wx, wy, TRAVEL_Z), f1, "over column 5", g),
+        Waypoint(1.5, (wx, wy, DROP_Z), f1, "down into the slot's mouth", g),
+        Waypoint(0.5, (wx, wy, DROP_Z), f1, "steady", g),
+        Waypoint(0.6, (wx, wy, DROP_Z), RELEASE, "let go", g),
+        Waypoint(1.0, (wx, wy, TRAVEL_Z), RELEASE, "up", g),
     ]}

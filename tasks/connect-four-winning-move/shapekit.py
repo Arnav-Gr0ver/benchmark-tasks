@@ -124,7 +124,9 @@ def _spawn_compound(prim_path: str, cfg, translation=None, orientation=None, **k
     root.AddOrientOp(precision=UsdGeom.XformOp.PrecisionDouble).Set(Gf.Quatd(w, x, y, z))
 
     phys = f"{prim_path}/Looks/physics"
-    pm = sim_utils.RigidBodyMaterialCfg(static_friction=spec.friction, dynamic_friction=spec.friction)
+    # A slick part (friction under 0.3) rules its contacts: "min" takes the lower of the two surfaces' frictions.
+    pm = sim_utils.RigidBodyMaterialCfg(static_friction=spec.friction, dynamic_friction=spec.friction,
+                                        friction_combine_mode="min" if spec.friction < 0.3 else "average")
     pm.func(phys, pm)
     look = f"{prim_path}/Looks/colour"
     vis = sim_utils.PreviewSurfaceCfg(diffuse_color=linear_rgb(spec.color), roughness=0.5)

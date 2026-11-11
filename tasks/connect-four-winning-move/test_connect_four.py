@@ -88,12 +88,14 @@ def test_ridged_discs_have_flats_facing_the_fingers_and_the_floor():
         assert (np.isclose(np.abs(pts[:, axis]), extreme)).sum() == 8  # two corners per flat, on both faces, both sides
 
 
-def test_the_funnel_catches_an_off_centre_disc_and_the_fingers_clear_it():
+def test_the_funnel_catches_an_off_centre_disc_and_the_fingers_clear_everything():
     assert task.MOUTH - task.T > 0.02                                 # +-10 mm of slack across the funnel's top
-    assert task.DROP_Z - task.R >= task.FRAME_TOP                     # the disc starts above the slot, in the mouth
-    tip = np.array([math.sin(task.TILT), -math.cos(task.TILT)]) * 0.013  # fingertips past the TCP (x, z)
-    tip_z = task.DROP_Z + tip[1]
-    assert tip_z > task.FRAME_TOP + task.LIP_RISE + 0.001             # above the back lip's top edge
+    tips_below_tcp = 0.013 * math.cos(task.LEAN)                      # fingertips past the TCP, leaning
+    assert task.DROP_Z - task.HOLD_ABOVE_CENTRE - task.R >= task.FRAME_TOP + 0.001   # the disc starts above the slot
+    assert task.DROP_Z - tips_below_tcp > task.FRAME_TOP + task.LIP_RISE + 0.005     # fingertips above the lips
+    assert task.PICK_Z - tips_below_tcp > task.TOP + task.HOLDER_WALL[2] + 0.004     # and above the holder's walls
+    assert task.TRAVEL_Z - task.HOLD_ABOVE_CENTRE - task.R > task.FRAME_TOP + task.LIP_RISE + 0.015  # carried clear
+    assert task.VIA_Y - task.R > task.WIDTH / 2 + task.POST / 2 + 0.01                # and it climbs beside the frame
 
 
 def test_task_file_loads():
@@ -101,14 +103,13 @@ def test_task_file_loads():
     assert set(t.free_objects) == {"red_spare", "blue_spare"}
 
 
-def test_the_tilted_grip_tag_leaves_ordinary_yaws_alone():
+def test_the_side_grip_tag_leaves_ordinary_yaws_alone():
     demo = pytest.importorskip("yam_arena.demo")
     plain = demo.grip_rotation.plain
     assert np.allclose(demo.grip_rotation(0.3), plain(0.3))
-    tilted = demo.grip_rotation(task.GRIP)
-    assert np.isclose(tilted[:, 2] @ np.array([0.0, 0.0, -1.0]), math.cos(task.TILT))   # approach 50 deg off vertical
-    assert tilted[0, 2] > 0                                                              # leaning forward
-    assert np.allclose(abs(tilted[:, 0] @ np.array([0.0, 1.0, 0.0])), 1.0)               # fingers close along y
+    grip = demo.grip_rotation(task.SIDE_GRIP)
+    assert np.allclose(np.abs(grip[:, 0]), [1.0, 0.0, 0.0])                           # fingers close along x: onto the faces
+    assert np.allclose(grip[:, 2], [0.0, -math.sin(task.LEAN), -math.cos(task.LEAN)])  # leaning 40 deg toward -y
 
 
 def test_demo_is_reachable():
