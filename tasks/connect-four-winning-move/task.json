@@ -1,0 +1,18 @@
+{
+  "title": "Drop the winning disc in Connect Four",
+  "category": "Societal relevance",
+  "keywords": [
+    "game",
+    "board state reasoning",
+    "insertion",
+    "connect four"
+  ],
+  "instruction": "You are playing red in Connect Four and it is your turn. Drop the spare red disc into the column that wins the game.",
+  "context": "Connect Four is a household game whose winning moves people spot at a glance, but here the win is a diagonal that needs the disc to land on top of the right stack, while red's eye-catching three-in-a-row along the bottom is already blocked and blue threatens to win elsewhere. The robot must read a vertical board through its windows and drop a disc precisely into a narrow slot.",
+  "setup": "Positions in cm from the midpoint between the two arm bases, on the table (x forward, y left). An upright yellow PLA Connect Four frame (7 columns at 2.2 cm pitch, 6 rows, 15.4 cm wide, 11.8 cm tall including a 0.8 cm base) is taped to the table facing the robot, its slot's mid-plane at x 18, centred at y 0. Each column is 2.0 cm wide inside and the slot is 1.0 cm deep front to back; the front has 6 mm posts between columns so the discs show through 1.6 cm windows; the back is solid. Discs are 1.8 cm across, 5 mm thick, 2 g, red or blue PLA. Columns numbered 1-7 from the robot's left, rows 1-6 from the bottom. In the frame: row 1, columns 1-7: blue, blue, empty, blue, red, red, red; row 2: column 4 red, column 5 blue, column 6 red, column 7 blue; column 4 also has blue in row 3 and red in row 4. A spare red disc stands on its edge, faces toward the robot, in a holder (two 4 x 24 x 6 mm walls, 1 mm off its faces) at x 18, y 20; a spare blue disc in the same kind of holder at x 18, y -20.",
+  "scoring": "Measured at the end of the run with a front photo. 0 if the blue spare disc is in the frame. Otherwise: 1.0 if the red spare disc rests in column 5, row 3 (on top of column 5's two discs: the diagonal win), still for 1 s; 0.25 if it rests in any other column (a legal move that does not win; the defensive block is column 3); 0 if it is not in the frame (on the table, on top of the frame, or still held).",
+  "run_limit": "1,200 steps (1 minute at 20 Hz)",
+  "reset_notes": "The twelve placed discs are glued in. Turn the frame upside down to shake out the dropped disc (it is the only loose one), set the frame back on its marks, and put the spare discs back in their holders.",
+  "fidelity": "Rigid bodies. The frame and the twelve discs already in it are fixed; only the two spare discs are loose (rubber-like friction, 1.2). The real discs settle by gravity onto the stack, as in the simulation.",
+  "scores": "Dream-1 run: TBD; demo: TBD"
+}
