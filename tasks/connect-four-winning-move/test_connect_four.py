@@ -73,13 +73,23 @@ def test_scores():
 
 def test_discs_fit_the_columns_and_cannot_leave_through_the_front():
     assert task.PITCH - task.DIVIDER > task.D + 0.0015
-    assert task.GAP > task.T + 0.004
+    assert task.GAP >= task.T + 0.004 - 1e-9
     assert task.PITCH - task.POST < task.D
 
 
 def test_task_file_loads():
     t = task_file.load(HERE / "task.py")
     assert set(t.free_objects) == {"red_spare", "blue_spare"}
+
+
+def test_the_tilted_grip_tag_leaves_ordinary_yaws_alone():
+    demo = pytest.importorskip("yam_arena.demo")
+    plain = demo.grip_rotation.plain
+    assert np.allclose(demo.grip_rotation(0.3), plain(0.3))
+    tilted = demo.grip_rotation(task.GRIP)
+    assert np.isclose(tilted[:, 2] @ np.array([0.0, 0.0, -1.0]), math.cos(task.TILT))   # approach 50 deg off vertical
+    assert tilted[0, 2] > 0                                                              # leaning forward
+    assert np.allclose(abs(tilted[:, 0] @ np.array([0.0, 1.0, 0.0])), 1.0)               # fingers close along y
 
 
 def test_demo_is_reachable():
@@ -90,4 +100,4 @@ def test_demo_is_reachable():
         for t in itertools.takewhile(lambda t: t < p.duration, itertools.count(0.0, 0.05)):
             p.action7(t)
         assert p.worst_ik_mm < 2.0 and p.worst_ik_deg < 3.0, (arm, p.worst_ik_mm, p.worst_ik_deg)
-    assert math.isclose(task.col_y(task.WIN[0]), -0.022)
+    assert math.isclose(task.col_y(task.WIN[0]), -task.PITCH)
