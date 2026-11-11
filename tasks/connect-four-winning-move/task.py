@@ -82,8 +82,12 @@ WIN = (4, 2)       # completes red's diagonal (6,0), (5,1), (4,2), (3,3): column
 BLOCK = (2, 0)     # completes blue's bottom row: column 3 from the left
 
 
+RIDGES = 16                    # a real disc's ridged rim: the gripper's pads press on flat ridges, not a round edge
+
+
 def _placed(name, cell, color):
-    return Disc(name, pos=(CX, col_y(cell[0]), cell_z(cell[1])), radius=R, height=T, axis="X", color=color)
+    return Disc(name, pos=(CX, col_y(cell[0]), cell_z(cell[1])), radius=R, height=T, axis="X", color=color,
+                ridges=RIDGES)
 
 
 DISCS = [_placed(f"red{i}", c, RED) for i, c in enumerate(PLACED_RED)]
@@ -103,9 +107,9 @@ def _holder(colour: str):
 
 DISC_MASS = 0.006
 SPARE_RED = Disc("red_spare", pos=(HOLDER_X, HOLDER_Y["red"], TOP + R + 0.0005), radius=R, height=T, axis="X",
-                 mass=DISC_MASS, color=RED)
+                 mass=DISC_MASS, color=RED, ridges=RIDGES)
 SPARE_BLUE = Disc("blue_spare", pos=(HOLDER_X, HOLDER_Y["blue"], TOP + R + 0.0005), radius=R, height=T, axis="X",
-                  mass=DISC_MASS, color=BLUE)
+                  mass=DISC_MASS, color=BLUE, ridges=RIDGES)
 OBJECTS = [*_frame(), *DISCS, *_holder("red"), *_holder("blue"), SPARE_RED, SPARE_BLUE]
 
 

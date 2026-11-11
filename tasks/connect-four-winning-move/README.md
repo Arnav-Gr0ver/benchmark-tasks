@@ -40,7 +40,8 @@ inspect-robots run --embodiment yam_arena --policy dream \
 ```
 
 The scripted demo is the same command with `--policy yam_scripted --max-steps 600`. The left arm, its gripper tilted
-50 degrees forward as a hand would be, pinches the red disc by its rim, lifts it out of its holder, carries it over
+50 degrees forward as a hand would be, pinches the red disc by its ridged rim (two flat ridges, one
+under each finger pad), lifts it out of its holder, carries it over
 column 5, lowers it until its edge is in the slot and lets go. A straight-down grip cannot reach 21 cm up, and
 yam_arena's scripted waypoints only describe straight-down grips, so `task.py` adds a tilted one (see `PITCHED`).
 About 11 s (210 steps).

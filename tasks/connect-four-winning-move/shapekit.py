@@ -1,7 +1,10 @@
 """shapekit: two object kinds yam_arena's task files lack, for a task file in this folder.
 
 - :class:`Disc`: a cylinder lying along the world X or Y axis (a coin or game disc standing on its edge), loose (with a
-  ``mass``) or fixed. Its state is yam_arena's own (bounding-box centre, orientation, velocities).
+  ``mass``) or fixed. With ``ridges`` its rim is that many flat ridges, as on a real game disc (a prism whose flats
+  are ``radius`` from its axis, one flat facing each way across and down), so a gripper's pads press on flats rather
+  than touching a round edge at one point; its state is then a :class:`BodyState` (the disc's centre). Without, it is
+  a plain cylinder and its state is yam_arena's own.
 - :class:`Compound`: one body made of several boxes (a jigsaw piece, a bracket), loose or fixed, turned ``yaw`` about the
   vertical. Its state is a :class:`BodyState`: the body origin's pose.
 
@@ -30,11 +33,15 @@ class Disc(Cylinder):
     """A cylinder whose axis lies along world ``axis`` ("X" or "Y"); ``pos`` is its centre."""
 
     axis: str = "X"
+    ridges: int = 0
+    friction: tuple[float, float] = (1.2, 1.0)  # static, dynamic: yam_arena's rubber-like default
 
     def _check(self) -> None:
         super()._check()
         if self.axis not in ("X", "Y"):
             raise ValueError(f"{self.name}: axis must be 'X' or 'Y'")
+        if self.ridges and (self.ridges < 8 or self.ridges % 4):
+            raise ValueError(f"{self.name}: ridges must be a multiple of 4, at least 8")
 
 
 @dataclass(frozen=True)
@@ -72,7 +79,7 @@ class BodyState(ObjectState):
         return math.degrees(math.acos(max(-1.0, min(1.0, float(self.rotation()[2, 2])))))
 
 
-_SPECS: dict[str, Compound] = {}
+_SPECS: dict[str, Compound | Disc] = {}
 
 
 def _yaw_xyzw(yaw: float) -> tuple[float, float, float, float]:
@@ -142,6 +149,95 @@ def _spawn_compound(prim_path: str, cfg, translation=None, orientation=None, **k
     return root.GetPrim()
 
 
+def ridged_points(spec: Disc) -> list[tuple[float, float, float]]:
+    """The prism's corners in the disc's own frame: two rings of ``ridges`` points, flats ``radius`` from the axis,
+    a flat's middle (not a corner) facing each way across the axis and straight down."""
+    n = spec.ridges
+    corner = spec.radius / math.cos(math.pi / n)
+    pts = []
+    for side in (-spec.height / 2, spec.height / 2):
+        for k in range(n):
+            a = (k + 0.5) * 2 * math.pi / n
+            u, v = corner * math.cos(a), corner * math.sin(a)
+            pts.append((side, u, v) if spec.axis == "X" else (u, side, v))
+    return pts
+
+
+def _spawn_ridged(prim_path: str, cfg, translation=None, orientation=None, **kwargs):
+    import isaaclab.sim as sim_utils
+    from isaaclab.sim.utils import bind_physics_material, bind_visual_material
+    from isaaclab.sim.utils.stage import get_current_stage
+    from pxr import Gf, PhysxSchema, UsdGeom, UsdPhysics
+
+    from yam_arena.station import linear_rgb
+
+    spec = _SPECS[cfg.part_name]
+    stage = get_current_stage()
+    root = UsdGeom.Xform.Define(stage, prim_path)
+    root.AddTranslateOp(precision=UsdGeom.XformOp.PrecisionDouble).Set(Gf.Vec3d(*(translation or (0.0, 0.0, 0.0))))
+    x, y, z, w = orientation if orientation is not None else (0.0, 0.0, 0.0, 1.0)  # Isaac Lab 3.0: (x, y, z, w)
+    root.AddOrientOp(precision=UsdGeom.XformOp.PrecisionDouble).Set(Gf.Quatd(w, x, y, z))
+
+    phys = f"{prim_path}/Looks/physics"
+    pm = sim_utils.RigidBodyMaterialCfg(static_friction=spec.friction[0], dynamic_friction=spec.friction[1])
+    pm.func(phys, pm)
+    look = f"{prim_path}/Looks/colour"
+    vis = sim_utils.PreviewSurfaceCfg(diffuse_color=linear_rgb(spec.color), roughness=0.4)
+    vis.func(look, vis)
+
+    body = f"{prim_path}/body"
+    xform = UsdGeom.Xform.Define(stage, body)
+    xform.AddTranslateOp(precision=UsdGeom.XformOp.PrecisionDouble).Set(Gf.Vec3d(0.0, 0.0, 0.0))
+    xform.AddOrientOp(precision=UsdGeom.XformOp.PrecisionDouble).Set(Gf.Quatd(1, 0, 0, 0))
+    if spec.free:
+        prim = xform.GetPrim()
+        UsdPhysics.RigidBodyAPI.Apply(prim)
+        UsdPhysics.MassAPI.Apply(prim).CreateMassAttr(spec.mass)
+        rb = PhysxSchema.PhysxRigidBodyAPI.Apply(prim)
+        rb.CreateMaxDepenetrationVelocityAttr(1.0)
+        rb.CreateSolverPositionIterationCountAttr(32)
+
+    n = spec.ridges
+    mesh = UsdGeom.Mesh.Define(stage, f"{body}/geom")
+    mesh.CreatePointsAttr([Gf.Vec3f(*p) for p in ridged_points(spec)])
+    counts = [n, n] + [4] * n
+    idx = list(range(n - 1, -1, -1)) + list(range(n, 2 * n))  # the two flat faces
+    for k in range(n):
+        j = (k + 1) % n
+        idx += [k, j, n + j, n + k]
+    mesh.CreateFaceVertexCountsAttr(counts)
+    mesh.CreateFaceVertexIndicesAttr(idx)
+    mesh.CreateSubdivisionSchemeAttr("none")
+    mesh.CreateDoubleSidedAttr(True)
+    geom = mesh.GetPrim()
+    UsdPhysics.CollisionAPI.Apply(geom)
+    UsdPhysics.MeshCollisionAPI.Apply(geom).CreateApproximationAttr("convexHull")
+    cp = PhysxSchema.PhysxCollisionAPI.Apply(geom)
+    cp.CreateContactOffsetAttr(0.003)
+    cp.CreateRestOffsetAttr(0.0)
+    bind_physics_material(str(geom.GetPath()), phys, stage=stage)
+    bind_visual_material(str(geom.GetPath()), look, stage=stage)
+    return root.GetPrim()
+
+
+def _ridged_object(spec: Disc):
+    from isaaclab.sim.spawners.spawner_cfg import SpawnerCfg
+    from isaaclab.sim.utils import clone
+    from isaaclab.utils import configclass
+    from isaaclab_arena.assets.object import Object
+    from isaaclab_arena.assets.object_type import ObjectType
+    from isaaclab_arena.utils.pose import Pose
+
+    @configclass
+    class RidgedSpawnerCfg(SpawnerCfg):
+        func: object = clone(_spawn_ridged)
+        part_name: str = ""
+
+    return Object(name=spec.name, object_type=ObjectType.RIGID if spec.free else ObjectType.BASE,
+                  spawner_cfg=RidgedSpawnerCfg(part_name=spec.name),
+                  initial_pose=Pose(position_xyz=tuple(float(v) for v in spec.pos), rotation_xyzw=_yaw_xyzw(spec.yaw)))
+
+
 def _compound_object(spec: Compound):
     from isaaclab.sim.spawners.spawner_cfg import SpawnerCfg
     from isaaclab.sim.utils import clone
@@ -164,8 +260,12 @@ def _np(x) -> np.ndarray:
     return getattr(x, "torch", x).detach().cpu().numpy().astype(np.float64)
 
 
-def _compound_state(environment, spec: Compound) -> BodyState:
-    half = np.asarray(spec.size, float) / 2
+def _compound_state(environment, spec: Compound | Disc) -> BodyState:
+    if isinstance(spec, Disc):
+        half = np.full(3, spec.radius)
+        half[0 if spec.axis == "X" else 1] = spec.height / 2
+    else:
+        half = np.asarray(spec.size, float) / 2
     if not spec.free:
         pos = np.asarray(spec.pos, float)
         return BodyState(pos=pos, quat_xyzw=np.asarray(_yaw_xyzw(spec.yaw), float), lin_vel=np.zeros(3),
@@ -187,6 +287,9 @@ def _patch_scene(scene) -> None:
     task_object, object_states = scene.task_object, scene.object_states
 
     def task_object_hook(spec):
+        if isinstance(spec, Disc) and spec.ridges:
+            _SPECS[spec.name] = spec
+            return _ridged_object(spec)
         if isinstance(spec, Disc):
             return _disc_object(scene, spec)
         if isinstance(spec, Compound):

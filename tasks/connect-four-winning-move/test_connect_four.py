@@ -77,6 +77,17 @@ def test_discs_fit_the_columns_and_cannot_leave_through_the_front():
     assert task.PITCH - task.POST < task.D
 
 
+def test_ridged_discs_have_flats_facing_the_fingers_and_the_floor():
+    shapekit = pytest.importorskip("shapekit")
+    pts = np.array(shapekit.ridged_points(task.SPARE_RED))
+    assert len(pts) == 2 * task.RIDGES
+    assert np.allclose(np.abs(pts[:, 0]), task.T / 2)                 # faces normal to x, 7 mm apart
+    for axis in (1, 2):                                               # across (y, the pinch) and down (z, the stand)
+        extreme = np.abs(pts[:, axis]).max()
+        assert math.isclose(extreme, task.R, rel_tol=1e-9)            # a flat, R from the centre, not a corner
+        assert (np.isclose(np.abs(pts[:, axis]), extreme)).sum() == 8  # two corners per flat, on both faces, both sides
+
+
 def test_task_file_loads():
     t = task_file.load(HERE / "task.py")
     assert set(t.free_objects) == {"red_spare", "blue_spare"}
