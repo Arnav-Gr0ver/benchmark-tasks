@@ -36,6 +36,10 @@ class Disc(Cylinder):
     axis: str = "X"
     ridges: int = 0
     friction: tuple[float, float] = (1.2, 1.0)  # static, dynamic: yam_arena's rubber-like default
+    # m: lets a pinch on the rim resist the disc swivelling about the line between the pads, as rubber pads do;
+    # without it a contact resists sliding but not twisting
+    torsional_patch: float = 0.004
+    angular_damping: float = 1.0
 
     def _check(self) -> None:
         super()._check()
@@ -202,6 +206,7 @@ def _spawn_ridged(prim_path: str, cfg, translation=None, orientation=None, **kwa
         rb = PhysxSchema.PhysxRigidBodyAPI.Apply(prim)
         rb.CreateMaxDepenetrationVelocityAttr(1.0)
         rb.CreateSolverPositionIterationCountAttr(32)
+        rb.CreateAngularDampingAttr(spec.angular_damping)
 
     n = spec.ridges
     mesh = UsdGeom.Mesh.Define(stage, f"{body}/geom")
@@ -221,6 +226,9 @@ def _spawn_ridged(prim_path: str, cfg, translation=None, orientation=None, **kwa
     cp = PhysxSchema.PhysxCollisionAPI.Apply(geom)
     cp.CreateContactOffsetAttr(0.003)
     cp.CreateRestOffsetAttr(0.0)
+    if spec.free and spec.torsional_patch:
+        cp.CreateTorsionalPatchRadiusAttr(spec.torsional_patch)
+        cp.CreateMinTorsionalPatchRadiusAttr(0.8 * spec.torsional_patch)
     bind_physics_material(str(geom.GetPath()), phys, stage=stage)
     bind_visual_material(str(geom.GetPath()), look, stage=stage)
     return root.GetPrim()
