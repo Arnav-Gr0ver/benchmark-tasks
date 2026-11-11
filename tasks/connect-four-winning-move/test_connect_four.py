@@ -88,6 +88,14 @@ def test_ridged_discs_have_flats_facing_the_fingers_and_the_floor():
         assert (np.isclose(np.abs(pts[:, axis]), extreme)).sum() == 8  # two corners per flat, on both faces, both sides
 
 
+def test_the_funnel_catches_an_off_centre_disc_and_the_fingers_clear_it():
+    assert task.MOUTH - task.T > 0.02                                 # +-10 mm of slack across the funnel's top
+    assert task.DROP_Z - task.R >= task.FRAME_TOP                     # the disc starts above the slot, in the mouth
+    tip = np.array([math.sin(task.TILT), -math.cos(task.TILT)]) * 0.013  # fingertips past the TCP (x, z)
+    tip_z = task.DROP_Z + tip[1]
+    assert tip_z > task.FRAME_TOP + task.LIP_RISE + 0.001             # above the back lip's top edge
+
+
 def test_task_file_loads():
     t = task_file.load(HERE / "task.py")
     assert set(t.free_objects) == {"red_spare", "blue_spare"}

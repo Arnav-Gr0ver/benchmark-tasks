@@ -22,7 +22,7 @@ from yam_arena.constants import FINGER_CLOSED, FINGER_OPEN  # noqa: E402
 from yam_arena.demo import Waypoint  # noqa: E402
 from yam_arena.task_file import TABLE_TOP, Box  # noqa: E402
 
-from shapekit import Disc  # noqa: E402
+from shapekit import Compound, Disc  # noqa: E402
 
 SCENE = "station"
 SCORE_OVER = "end"
@@ -72,7 +72,26 @@ def _frame():
         parts.append(Box(f"frame_post{i}", pos=(CX - GAP / 2 - PLATE / 2, y, zc), size=(PLATE, POST, FRAME_H),
                          color=YELLOW))
         parts.append(Box(f"frame_divider{i}", pos=(CX, y, zc), size=(GAP, DIVIDER, FRAME_H), color=YELLOW))
+    parts.append(_funnel())
     return parts
+
+
+# The slot's flared mouth, as on a real frame: a lip along the top of the front and of the back, each sloping out and
+# up at 45 degrees, so a disc let go a few millimetres off the slot's mid-plane slides in instead of landing on the rim.
+LIP_LEN, LIP_T, LIP_DEG = 0.012, 0.002, 45.0
+LIP_RISE = LIP_LEN * math.sin(math.radians(LIP_DEG))
+MOUTH = GAP + 2 * LIP_LEN * math.cos(math.radians(LIP_DEG))   # the funnel's width across its top
+
+
+def _funnel():
+    run, rise = LIP_LEN * math.cos(math.radians(LIP_DEG)) / 2, LIP_RISE / 2
+    lips = []
+    for s in (-1, 1):  # -1: the front lip (toward the robot), +1: the back lip
+        centre = (s * (GAP / 2 + run), 0.0, rise)
+        # turning about y by +45 degrees lowers a box's +x end: the front lip's inner (+x) end sits on the slot's edge
+        lips.append((centre, (LIP_LEN, WIDTH + POST, LIP_T), (0.0, -s * LIP_DEG)))
+    return Compound("frame_funnel", pos=(CX, 0.0, FRAME_TOP), size=(MOUTH, WIDTH + POST, LIP_RISE), color=YELLOW,
+                    boxes=tuple(lips))
 
 
 # The position (column, row), 0-based. Red to move; twelve discs, six each.
@@ -168,7 +187,8 @@ _yam_demo.grip_rotation = _grip_rotation
 
 GRIP = PITCHED + TILT
 PICK_Z = SPARE_RED.pos[2]              # the pads pinch the disc's rim across its middle
-DROP_Z = FRAME_TOP + 0.014             # the disc's lower 2 mm in the slot; the fingertips clear the frame's top
+DROP_Z = FRAME_TOP + 0.018             # the disc's bottom 2 mm above the slot, inside the funnel's mouth; the
+#                                        fingertips (10 mm ahead of and 8 mm below the TCP) clear the back lip
 TRAVEL_Z = DROP_Z + 0.03
 
 

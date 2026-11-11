@@ -26,11 +26,11 @@ embodiment and `task_score` scorer.
 In the Isaac Lab-Arena environment from the simulation walkthrough:
 
 ```bash
-bash run.sh          # scripted demo (scores 1.0): ~/connect-four-winning-move_demo_all.mp4 and the setup screenshot
-bash run.sh dream    # Dream-1: ~/connect-four-winning-move_dream_all.mp4
+bash run.sh          # scripted demo (scores 1.0): ~/connect-four-winning-move_demo_<time>_all.mp4 and a setup screenshot
+bash run.sh dream    # Dream-1: ~/connect-four-winning-move_dream_<time>_all.mp4
 ```
 
-`_all.mp4` shows the top camera above both wrist cameras. Or directly, from this folder:
+`_all.mp4` shows the top camera above both wrist cameras; `<time>` is when the run started. Or directly, from this folder:
 
 ```bash
 inspect-robots run --embodiment yam_arena --policy dream \
@@ -42,7 +42,7 @@ inspect-robots run --embodiment yam_arena --policy dream \
 The scripted demo is the same command with `--policy yam_scripted --max-steps 600`. The left arm, its gripper tilted
 50 degrees forward as a hand would be, pinches the red disc by its ridged rim (two flat ridges, one
 under each finger pad), lifts it out of its holder, carries it over
-column 5, lowers it until its edge is in the slot and lets go. A straight-down grip cannot reach 21 cm up, and
+column 5, lowers it into the slot's flared mouth and lets go. A straight-down grip cannot reach 21 cm up, and
 yam_arena's scripted waypoints only describe straight-down grips, so `task.py` adds a tilted one (see `PITCHED`).
 About 11 s (210 steps).
 

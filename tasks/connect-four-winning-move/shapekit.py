@@ -25,7 +25,8 @@ from yam_arena.task_file import Box, Cylinder, ObjectState
 
 __all__ = ["BodyState", "Compound", "Disc", "install"]
 
-BoxSpec = tuple[tuple[float, float, float], tuple[float, float, float]]  # centre, size, in the part frame (m)
+# centre and size in the part frame (m), and optionally a tilt (degrees) about the part's x then y axes
+BoxSpec = tuple
 
 
 @dataclass(frozen=True)
@@ -46,8 +47,9 @@ class Disc(Cylinder):
 
 @dataclass(frozen=True)
 class Compound(Box):
-    """One body of ``boxes`` (centre, size in the part frame); ``pos`` is the part frame's origin. ``size`` is only
-    nominal (its bounding box). Loose with a ``mass``, fixed without."""
+    """One body of ``boxes`` (centre, size in the part frame, and optionally a tilt in degrees about the part's x then
+    y axes); ``pos`` is the part frame's origin. ``size`` is only nominal (its bounding box). Loose with a ``mass``,
+    fixed without."""
 
     boxes: tuple[BoxSpec, ...] = ()
     friction: float = 0.8
@@ -135,10 +137,14 @@ def _spawn_compound(prim_path: str, cfg, translation=None, orientation=None, **k
         rb = PhysxSchema.PhysxRigidBodyAPI.Apply(prim)
         rb.CreateMaxDepenetrationVelocityAttr(1.0)
         rb.CreateSolverPositionIterationCountAttr(32)
-    for i, (centre, size) in enumerate(spec.boxes):
+    for i, box in enumerate(spec.boxes):
+        centre, size = box[0], box[1]
+        tilt = box[2] if len(box) > 2 else (0.0, 0.0)
         cube = UsdGeom.Cube.Define(stage, f"{body}/box_{i}")
         cube.CreateSizeAttr(1.0)
         cube.AddTranslateOp().Set(Gf.Vec3d(*centre))
+        if any(tilt):
+            cube.AddRotateXYZOp().Set(Gf.Vec3f(float(tilt[0]), float(tilt[1]), 0.0))
         cube.AddScaleOp().Set(Gf.Vec3f(*size))
         UsdPhysics.CollisionAPI.Apply(cube.GetPrim())
         cp = PhysxSchema.PhysxCollisionAPI.Apply(cube.GetPrim())
