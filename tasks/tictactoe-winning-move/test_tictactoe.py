@@ -33,36 +33,39 @@ def test_the_position_has_exactly_one_win_and_one_threat():
     assert winning_cells(blue, red) == {task.BLOCK_CELL}
 
 
-def _state(pos, tilt_deg=0.0, height=task.COUNTER_H):
+def _state(pos, tilt_deg=0.0):
     a = math.radians(tilt_deg) / 2
     pos = np.asarray(pos, float)
-    low = pos - [task.COUNTER_R, task.COUNTER_R, height / 2]
+    half = task.BLOCK / 2 * (math.cos(math.radians(tilt_deg)) + abs(math.sin(math.radians(tilt_deg))))
+    low = pos - [task.BLOCK / 2, half, half]
     return task_file.ObjectState(pos=pos, quat_xyzw=np.array([math.sin(a), 0, 0, math.cos(a)]), lin_vel=np.zeros(3),
-                                 ang_vel=np.zeros(3), low=low, high=pos + [task.COUNTER_R, task.COUNTER_R, height / 2])
+                                 ang_vel=np.zeros(3), low=low, high=pos + [task.BLOCK / 2, half, half])
 
 
 def _start():
-    return {o.name: _state(o.pos) for o in task.OBJECTS if isinstance(o, task_file.Cylinder)}
+    return {o.name: _state(o.pos) for o in task.OBJECTS if o.mass is not None}
 
 
 def test_scores():
     s = _start()
     assert task.score(s) == 0.0
-    s["red_spare"] = _state((*task.cell_xy(*task.WIN_CELL), task.COUNTER_Z))
+    s["red_spare"] = _state((*task.cell_xy(*task.WIN_CELL), task.BLOCK_Z))
     assert task.score(s) == 1.0 and task.success(s)
-    s["red_spare"] = _state((*task.cell_xy(*task.BLOCK_CELL), task.COUNTER_Z))
+    s["red_spare"] = _state((*task.cell_xy(*task.BLOCK_CELL), task.BLOCK_Z))
     assert task.score(s) == 0.25
-    s["red_spare"] = _state((*task.cell_xy(1, 1), task.COUNTER_Z + task.COUNTER_H))  # stacked on red
+    s["red_spare"] = _state((*task.cell_xy(1, 1), task.BLOCK_Z + task.BLOCK))  # stacked on red
     assert task.score(s) == 0.0
-    s["red_spare"] = _state((*task.cell_xy(*task.WIN_CELL), task.COUNTER_Z), tilt_deg=40)  # on its edge
+    s["red_spare"] = _state((*task.cell_xy(*task.WIN_CELL), task.BLOCK_Z), tilt_deg=40)  # propped on an edge
+    assert task.score(s) == 0.0
+    s["red_spare"] = _state((*task.cell_xy(*task.WIN_CELL), task.BLOCK_Z), tilt_deg=90)  # flat on another face
+    assert task.score(s) == 1.0
+    s = _start()
+    s["red_spare"] = _state((*task.cell_xy(*task.WIN_CELL), task.BLOCK_Z))
+    s["blue_spare"] = _state((*task.cell_xy(*task.BLOCK_CELL), task.BLOCK_Z))
     assert task.score(s) == 0.0
     s = _start()
-    s["red_spare"] = _state((*task.cell_xy(*task.WIN_CELL), task.COUNTER_Z))
-    s["blue_spare"] = _state((*task.cell_xy(*task.BLOCK_CELL), task.COUNTER_Z))
-    assert task.score(s) == 0.0
-    s = _start()
-    s["red_spare"] = _state((*task.cell_xy(*task.WIN_CELL), task.COUNTER_Z))
-    s["red_b"] = _state((task.cell_xy(1, 1)[0] + 0.03, 0.0, task.COUNTER_Z))   # knocked aside
+    s["red_spare"] = _state((*task.cell_xy(*task.WIN_CELL), task.BLOCK_Z))
+    s["red_b"] = _state((task.cell_xy(1, 1)[0] + 0.03, 0.0, task.BLOCK_Z))   # knocked aside
     assert task.score(s) == 0.0
 
 

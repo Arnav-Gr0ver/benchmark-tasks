@@ -1,6 +1,6 @@
 """On the station table, between the arms: a white tic-tac-toe board (24 cm square, a 3 x 3 grid of 8 cm cells drawn in
-black) with four counters on it, two red and two blue, and two loose counters on the table: a red one to the robot's
-left of the board and a blue one to its right. Red to move. Rows and columns as seen from behind the arms: row 1 is
+black) with four 4 cm wooden blocks on it as pieces, two red and two blue, and two loose blocks on the table: a red
+one to the robot's left of the board and a blue one to its right. Red to move. Rows and columns as seen from behind the arms: row 1 is
 the far row, column 1 the left column. Red holds row 1 and row 2 of the middle column; blue holds row 2 and row 3 of
 the right column.
 
@@ -15,7 +15,7 @@ import math
 import numpy as np
 from yam_arena.constants import FINGER_OPEN
 from yam_arena.demo import Waypoint, pick_place_waypoints
-from yam_arena.task_file import TABLE_TOP, Box, Cylinder
+from yam_arena.task_file import TABLE_TOP, Box
 
 SCENE = "station"
 SCORE_OVER = "end"
@@ -23,14 +23,14 @@ SUCCESS_HOLD_S = 1.0
 TOP = TABLE_TOP[SCENE]
 
 INSTRUCTION = ("You are playing red in tic-tac-toe and it is your turn. Make the winning move: put the spare red "
-               "counter in the cell that wins the game.")
+               "block in the cell that wins the game.")
 
 # -- board (world frame: x forward from the arms, y left, z up; metres) ----------------------------------------------
 CENTRE = (0.28, 0.0)
 PITCH = 0.08                     # cell size
 BOARD_T = 0.006
 BOARD_TOP = TOP + BOARD_T
-COUNTER_R, COUNTER_H, COUNTER_MASS = 0.022, 0.016, 0.015
+BLOCK, BLOCK_MASS = 0.04, 0.032   # 4 cm pine toy blocks
 WHITE, BLACK = (0.94, 0.94, 0.92), (0.08, 0.08, 0.09)
 RED, BLUE = (0.85, 0.10, 0.10), (0.12, 0.30, 0.85)
 
@@ -51,31 +51,34 @@ LINES += [Box(f"line_y{i}", pos=(CENTRE[0], CENTRE[1] + s * PITCH / 2, BOARD_TOP
 PLACED = {"red_a": ((0, 1), RED), "red_b": ((1, 1), RED), "blue_a": ((1, 2), BLUE), "blue_b": ((2, 2), BLUE)}
 WIN_CELL = (2, 1)                # completes red's middle column
 BLOCK_CELL = (0, 2)              # where blue would complete its right column
-COUNTER_Z = BOARD_TOP + COUNTER_H / 2 + 0.0005
+BLOCK_Z = BOARD_TOP + BLOCK / 2 + 0.0005
 
 
-def _counter(name, xy, color, z):
-    return Cylinder(name, pos=(*xy, z), radius=COUNTER_R, height=COUNTER_H, mass=COUNTER_MASS, color=color)
+def _block(name, xy, color, z):
+    return Box(name, pos=(*xy, z), size=(BLOCK, BLOCK, BLOCK), mass=BLOCK_MASS, color=color)
 
 
-COUNTERS = [_counter(n, cell_xy(*rc), c, COUNTER_Z) for n, (rc, c) in PLACED.items()]
-SPARE_RED = _counter("red_spare", (0.20, 0.20), RED, TOP + COUNTER_H / 2 + 0.0005)
-SPARE_BLUE = _counter("blue_spare", (0.20, -0.20), BLUE, TOP + COUNTER_H / 2 + 0.0005)
-OBJECTS = [BOARD, *LINES, *COUNTERS, SPARE_RED, SPARE_BLUE]
+PIECES = [_block(n, cell_xy(*rc), c, BLOCK_Z) for n, (rc, c) in PLACED.items()]
+SPARE_RED = _block("red_spare", (0.20, 0.20), RED, TOP + BLOCK / 2 + 0.0005)
+SPARE_BLUE = _block("blue_spare", (0.20, -0.20), BLUE, TOP + BLOCK / 2 + 0.0005)
+OBJECTS = [BOARD, *LINES, *PIECES, SPARE_RED, SPARE_BLUE]
 
 # -- scoring --------------------------------------------------------------------------------------------------------
-IN_CELL = 0.025       # a counter's centre within this of a cell's centre
-MOVED = 0.015         # a placed counter moved further than this has been disturbed
+IN_CELL = 0.025       # a block's centre within this of a cell's centre
+MOVED = 0.015         # a placed block moved further than this has been disturbed
 FLAT_DEG = 15.0
 
 
 def _tilt_deg(obj) -> float:
-    x, y, _, _ = obj.quat_xyzw
-    return float(np.degrees(np.arccos(np.clip(1 - 2 * (x * x + y * y), -1.0, 1.0))))
+    """How far a block is from lying flat on one of its faces (deg): the angle between the vertical and the nearest
+    of its own axes."""
+    x, y, z, w = obj.quat_xyzw
+    up = np.abs([2 * (x * z - w * y), 2 * (y * z + w * x), 1 - 2 * (x * x + y * y)])  # world z in the block's frame
+    return float(np.degrees(np.arccos(np.clip(up.max(), -1.0, 1.0))))
 
 
 def _cell_of(obj):
-    """The cell a counter lies flat in, on the board (not stacked on another counter); else None."""
+    """The cell a block sits flat in, on the board (not stacked on another block); else None."""
     if _tilt_deg(obj) > FLAT_DEG or abs(float(obj.low[2]) - BOARD_TOP) > 0.003:
         return None
     for r in range(3):
@@ -88,7 +91,7 @@ def _cell_of(obj):
 def _on_board(obj) -> bool:
     half = 1.5 * PITCH
     return bool(abs(obj.pos[0] - CENTRE[0]) < half and abs(obj.pos[1] - CENTRE[1]) < half
-                and float(obj.low[2]) < BOARD_TOP + COUNTER_H + 0.005)
+                and float(obj.low[2]) < BOARD_TOP + BLOCK + 0.005)
 
 
 def _disturbed(objects) -> bool:
@@ -99,9 +102,9 @@ def _disturbed(objects) -> bool:
 def outcome(objects) -> tuple[float, str]:
     """(score, why), from the end state."""
     if _disturbed(objects):
-        return 0.0, "a counter already on the board was moved"
+        return 0.0, "a block already on the board was moved"
     if _on_board(objects["blue_spare"]):
-        return 0.0, "the blue counter was played"
+        return 0.0, "the blue block was played"
     red = objects["red_spare"]
     cell = _cell_of(red)
     if cell == WIN_CELL:
@@ -109,29 +112,28 @@ def outcome(objects) -> tuple[float, str]:
     taken = {rc for rc, _ in PLACED.values()}
     if cell is not None and cell not in taken:
         return 0.25, f"a legal move that does not win (row {cell[0] + 1}, column {cell[1] + 1})"
-    return 0.0, "the red counter is not flat in an empty cell"
+    return 0.0, "the red block is not flat in an empty cell"
 
 
 def success(objects) -> bool:
-    """The spare red counter flat in the winning cell, at rest, nothing else disturbed; holds 1 s."""
+    """The spare red block flat in the winning cell, at rest, nothing else disturbed; holds 1 s."""
     return outcome(objects)[0] == 1.0 and objects["red_spare"].resting()
 
 
 def score(objects) -> float:
-    """1.0 for the winning move; 0.25 for the red counter flat in any other empty cell; 0 if a placed counter was
-    moved, the blue counter played, or otherwise."""
+    """1.0 for the winning move; 0.25 for the red block flat in any other empty cell; 0 if a placed block was moved,
+    the blue block played, or otherwise."""
     return outcome(objects)[0]
 
 
 # -- scripted demo --------------------------------------------------------------------------------------------------
-PAD_TIP = 0.013                       # fingertips past the TCP
-GRIP_Z = TOP + 0.004 + PAD_TIP        # fingertips 4 mm above the table: the pads hold the counter's upper 12 mm
-PLACE_Z = BOARD_TOP + 0.002 + 0.004 + PAD_TIP  # the counter's underside 2 mm above the board when let go
-RELEASE = 0.6 * FINGER_OPEN           # open only partly: fully open fingers would reach the neighbouring cells
+GRIP_Z = TOP + BLOCK / 2                       # the TCP at the block's centre, as the simulator's own block example
+PLACE_Z = BOARD_TOP + BLOCK / 2 + 0.004        # the block's underside 4 mm above the board when let go
+RELEASE = 0.7 * FINGER_OPEN                    # open only partly, so the fingers stay clear of the next cells
 
 
 def demo():
-    """The left arm picks the spare red counter and sets it in the winning cell."""
+    """The left arm picks the spare red block and sets it in the winning cell."""
     plan = pick_place_waypoints((*SPARE_RED.pos[:2], GRIP_Z), (*cell_xy(*WIN_CELL), PLACE_Z), travel_z=TOP + 0.14)
     plan[6] = Waypoint(plan[6].duration, plan[6].pos, RELEASE, "release")
     plan[7] = Waypoint(plan[7].duration, plan[7].pos, RELEASE, "retreat")
