@@ -1,18 +1,19 @@
 {
-  "title": "Make the winning move in tic-tac-toe",
-  "category": "Societal relevance",
-  "keywords": [
-    "game",
-    "board state reasoning",
-    "pick and place",
-    "tic-tac-toe"
-  ],
-  "instruction": "You are playing red in tic-tac-toe and it is your turn. Make the winning move: put the spare red block in the cell that wins the game.",
-  "context": "Tic-tac-toe is the first board game most people learn, and a robot that can read a physical board and make the right move is an easy-to-judge test of acting on what it sees, not only manipulating. Blue also threatens to win, so the obvious defensive move is the wrong answer.",
-  "setup": "Positions in cm from the midpoint between the two arm bases, on the table (x forward, y left). A white board (24 x 24 cm, 6 mm thick: acrylic or foam board) is taped to the table centred at x 28, y 0, ruled into a 3 x 3 grid of 8 cm cells with black tape. Rows and columns as seen from behind the arms: row 1 is the far row, column 1 the left column. The pieces are 4 cm cubic pine toy blocks (32 g), painted red or blue. Four sit centred in cells: red in row 1 column 2 and row 2 column 2; blue in row 2 column 3 and row 3 column 3. A spare red block sits on the table at x 20, y 20 (left of the board) and a spare blue block at x 20, y -20 (right of the board), all squared to the board.",
-  "scoring": "Measured at the end of the run with a top photo and a ruler. 0 if any of the four blocks on the board was moved more than 1.5 cm or tipped off its face, or if the blue spare block is on the board. Otherwise: 1.0 if the red spare block sits flat on the board (on any face) with its centre within 2.5 cm of the centre of row 3, column 2 (the winning cell), at rest for 1 s; 0.25 if it sits flat with its centre within 2.5 cm of the centre of any other empty cell (a legal move that does not win; the defensive block is row 1, column 3); 0 otherwise (off the board, between cells, propped on an edge, or stacked on another block).",
-  "run_limit": "1,200 steps (1 minute at 20 Hz)",
-  "reset_notes": "Put the four board blocks back in their cells and the two spare blocks on their table marks.",
-  "fidelity": "Rigid bodies; the board and its lines are fixed; the blocks are loose with rubber-like friction (1.2). Nothing is simplified beyond friction and contact stiffness.",
-  "scores": "Dream-1 run: TBD; demo: TBD"
+    "title":  "Make the winning move in tic-tac-toe",
+    "category":  "Societal relevance",
+    "keywords":  [
+                     "game",
+                     "board state reasoning",
+                     "pick and place",
+                     "tic-tac-toe"
+                 ],
+    "instruction":  "You are playing red in tic-tac-toe and it is your turn. Make the winning move: put the spare red block in the cell that wins the game.",
+    "context":  "Tic-tac-toe is the first board game most people learn, and a robot that can read a physical board and make the right move is an easy-to-judge test of acting on what it sees, not only manipulating. Blue also threatens to win, so the obvious defensive move is the wrong answer.",
+    "setup":  "Positions in cm from the midpoint between the two arm bases, on the table (x forward, y left). A white board (24 x 24 cm, 6 mm thick: acrylic or foam board) is taped to the table centred at x 28, y 0, ruled into a 3 x 3 grid of 8 cm cells with black tape. Rows and columns as seen from behind the arms: row 1 is the far row, column 1 the left column. The pieces are 4 cm cubic pine toy blocks (32 g), painted red or blue. Four sit centred in cells: red in row 1 column 2 and row 2 column 2; blue in row 2 column 3 and row 3 column 3. A spare red block sits on the table at x 20, y 20 (left of the board) and a spare blue block at x 20, y -20 (right of the board), all squared to the board.",
+    "scoring":  "Measured at the end of the run with a top photo and a ruler. 0 if any of the four blocks on the board was moved more than 1.5 cm or tipped off its face, or if the blue spare block is on the board. Otherwise: 1.0 if the red spare block sits flat on the board (on any face) with its centre within 2.5 cm of the centre of row 3, column 2 (the winning cell), at rest for 1 s; 0.25 if it sits flat with its centre within 2.5 cm of the centre of any other empty cell (a legal move that does not win; the defensive block is row 1, column 3); 0 otherwise (off the board, between cells, propped on an edge, or stacked on another block).",
+    "run_limit":  "1,200 steps (1 minute at 20 Hz)",
+    "reset_notes":  "Put the four board blocks back in their cells and the two spare blocks on their table marks.",
+    "fidelity":  "Rigid bodies; the board and its lines are fixed; the blocks are loose with rubber-like friction (1.2). Nothing is simplified beyond friction and contact stiffness.",
+    "scores":  "Dream-1 run: 0.0; demo: 1.0",
+    "media":  "M-ADCSDT"
 }
