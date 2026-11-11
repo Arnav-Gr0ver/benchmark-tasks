@@ -1,0 +1,13 @@
+{
+  "title": "Turn and place the last piece of a peg puzzle",
+  "category": "Societal relevance",
+  "keywords": ["puzzle", "shape matching", "orientation", "insertion", "peg puzzle"],
+  "instruction": "Finish the jigsaw puzzle: put the last piece into the empty space in the tray.",
+  "context": "Finishing a children's peg puzzle needs a robot to match a part's shape to a gap and turn it the one way it fits before inserting it, the same reasoning as orienting a keyed part in assembly. The piece starts a quarter turn off, so placing it as it lies never fits.",
+  "setup": "Positions in cm from the midpoint between the two arm bases, on the table (x forward, y left). A wooden tray (17.2 cm square: 0.4 cm plywood floor, 0.8 cm walls 0.8 cm tall, 15.6 cm square inside) is taped to the table centred at x 27, y 0. Eight square plywood pieces (4.9 cm square, 0.8 cm thick, each with a 1.2 x 1.2 x 1.4 cm square knob glued on its centre) lie in it on a 5.2 cm grid; the middle cell is empty. Neighbouring pieces join with rectangular tabs (1.4 cm wide, sticking out 1.1 cm) that sit in notches (1.7 cm wide, 0.95 cm deep) in the other piece, with 1.5 mm clearance all round; the exact tab and notch of every piece is in task.py (`piece_boxes`, `OWNERS`) and in the setup screenshot. The eight pieces are glued to the tray floor. The last piece (orange, 12 g) lies flat on the table at x 20, y 20, turned a quarter turn counterclockwise from the way it fits: as it lies, its tabs point to the robot's left and away from the robot, its notches to the robot's right and toward it; it fits with its tabs pointing away from the robot and to the robot's right.",
+  "scoring": "Measured at the end of the run with a top photo and a ruler. 1.0 if the last piece is seated in the middle cell: flat on the tray floor (its top level with its neighbours' tops within 1.5 mm), its centre within 3 mm of the cell's centre and turned within 6 degrees of the way it fits, at rest for 1 s. 0.5 if it is turned the right way (within 15 degrees) with its centre within 1.5 cm of the cell's centre but not seated (resting on a tab, tilted). 0.25 if its centre is within 1.5 cm of the cell's centre but it is turned the wrong way. 0 otherwise.",
+  "run_limit": "1,200 steps (1 minute at 20 Hz)",
+  "reset_notes": "Lift the last piece out by its knob and lay it on its table mark in its starting turn.",
+  "fidelity": "Rigid bodies built from boxes; the tray and the eight placed pieces are fixed (glued down in the real build). Tabs and notches are rectangular rather than rounded, so they guide the piece but do not lock it in. The piece's friction is 0.6.",
+  "scores": "Dream-1 run: TBD; demo: TBD"
+}
