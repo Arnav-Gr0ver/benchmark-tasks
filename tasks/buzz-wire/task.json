@@ -15,5 +15,6 @@
   "run_limit": "3,600 steps (3 minutes at 20 Hz)",
   "reset_notes": "Slide the ring back along the wire to the green sleeve (it cannot come off the wire) and set its bottom in the stand's groove and its handle on the rest.",
   "fidelity": "Rigid bodies. The wire is fixed: a chain of 3 mm capsules every 6 mm along a smooth spline, 7 mm under the sleeves. The ring is 24 straight 3 x 3 mm chords of the circle plus its handle, one free body (friction 0.6). A touch is the ring's centre line coming within 3 mm of the bare wire's, measured every step. Checked in PyBullet (check_physics.py): the ring rests on its stand clear of the wire, and the wire traps it.",
-  "scores": "Dream-1 run: TBD; demo: TBD"
+  "scores": "Dream-1 run: 0.0; demo: 1.0",
+  "media": "M-2UNMWR"
 }
