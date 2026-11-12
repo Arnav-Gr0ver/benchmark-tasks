@@ -118,7 +118,8 @@ def _start():
 
 
 def _slid(name, distance):
-    return _body(task.world(tower.rod_centre(name) - tower.rod_dir(name) * distance))
+    """A rod slid ``distance`` toward its cap."""
+    return _body(task.world(tower.rod_centre(name) + tower.CAP_END[name] * tower.rod_dir(name) * distance))
 
 
 def test_scores():
@@ -150,17 +151,33 @@ def test_task_file_loads():
     assert set(t.free_objects) == set(task.ROD_NAMES.values()) | set(tower.MARBLES)
 
 
-def test_demo_pulls_the_blue_rod_fully_out_and_is_reachable():
+def test_caps_sit_outside_the_tube_clear_of_the_other_rods_and_leave_each_rod_balanced():
+    half = np.full(3, tower.CAP / 2)
+    for name in tower.RODS:
+        cc = tower.cap_centre(name)
+        k = 0 if tower.RODS[name][0] == "x" else 1
+        assert abs(cc[k]) - tower.CAP / 2 > tower.R_OUT + 0.01                # outside the tube, 1 cm off it
+        for other in set(tower.RODS) - {name}:
+            c, d = tower.rod_centre(other), tower.rod_dir(other)
+            gap = _box_to_segment(cc, half * 2, c - d * tower.ROD_LEN / 2, c + d * tower.ROD_LEN / 2) - tower.ROD_R
+            assert gap > 0.005, (name, other)
+            assert np.linalg.norm(tower.cap_centre(other) - cc) > 0.03
+        holes = sorted(float(p[k]) for p in tower.crossing_points(name))
+        assert holes[0] + 0.005 < tower.mass_centre(name)[k] < holes[1] - 0.005   # it rests on both holes
+
+
+def test_demo_pulls_the_blue_rod_fully_out_by_its_cap_and_is_reachable():
     demo = pytest.importorskip("yam_arena.demo")
     station = pytest.importorskip("yam_arena.station")
-    assert tower.extracted(tower.SAFE, tower.rod_centre(tower.SAFE) - tower.rod_dir(tower.SAFE) * task.PULL) > 1.0
-    far_end = task.world(tower.rod_centre("far") - tower.rod_dir("far") * tower.ROD_LEN / 2)
-    assert task.GRIP_Y - 0.010 - far_end[1] < -0.01                           # fingers clear of the orange rod's end
-    rod_z = task.world(tower.rod_centre(tower.SAFE))[2]
+    d = tower.CAP_END[tower.SAFE] * tower.rod_dir(tower.SAFE)
+    assert tower.extracted(tower.SAFE, tower.rod_centre(tower.SAFE) + d * task.PULL) > 1.0
     tips = task.GRIP[2] - task.PAD_TIP
-    assert rod_z - tips >= 0.010                                              # the flat of the pads on the rod
-    assert tips > task.TOP + 0.05                                             # nothing under the rod's end there
-    assert task.world(tower.rod_centre(tower.SAFE))[1] - tower.ROD_LEN / 2 < task.GRIP_Y - 0.010
+    cap = task.CAP_AT
+    assert cap[2] - tower.CAP / 2 < tips < cap[2] - tower.CAP / 2 + 0.004   # the pads on the cap's whole height
+    open_side = -0.30 * task.FINGER_OPEN
+    assert open_side > tower.CAP / 2 + 0.005                                  # the open fingers clear the cap
+    far_end = task.world(tower.rod_centre("far") - tower.rod_dir("far") * tower.ROD_LEN / 2)
+    assert task.GRIP[1] + 0.010 < far_end[1] - 0.005                          # and the orange rod's end
     for arm, waypoints in task.demo().items():
         p = demo.ArmPlan(waypoints, station.BASES[arm])
         for t in itertools.takewhile(lambda t: t < p.duration, itertools.count(0.0, 0.05)):

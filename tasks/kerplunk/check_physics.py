@@ -4,7 +4,7 @@ fall below the fallen plane (20 mm under the lowest rods). Exactly one rod, the 
 falling. World scaled x10 with gravity x10 (same timing), so PyBullet's contact margins stay small.
 
     python check_physics.py          # the four removals
-    python check_physics.py sweep    # the same under low, medium and high friction, two speeds, both directions
+    python check_physics.py sweep    # the same under low, medium and high friction, at three speeds
     python check_physics.py demo     # the demo's grip, lift and pull on the blue rod, with the arm off by 1-2 mm
 """
 
@@ -23,7 +23,7 @@ import tower  # noqa: E402
 S = 10.0
 DT = 1 / 1000
 FRICTION = {"rod": 0.4, "marble": 0.3, "wall": 0.4}
-MASS = {"rod": 0.003, "marble": 0.0055}
+MASS = {"rod": tower.ROD_MASS, "cap": tower.CAP_MASS, "marble": 0.0055}
 
 
 def build():
@@ -45,11 +45,22 @@ def build():
         p.changeDynamics(bb, -1, lateralFriction=FRICTION["wall"], collisionMargin=0.0001 * S)
     rods = {}
     for name in tower.RODS:
+        # the rod (a cylinder, 3 g) with its cap (a 14 mm box, 0.5 g) fixed over its last 14 mm
         cs = p.createCollisionShape(p.GEOM_CYLINDER, radius=tower.ROD_R * S, height=tower.ROD_LEN * S)
+        cap = p.createCollisionShape(p.GEOM_BOX, halfExtents=[tower.CAP / 2 * S] * 3)
         d = tower.rod_dir(name)
-        q = p.getQuaternionFromEuler([0, math.pi / 2, 0]) if d[0] else p.getQuaternionFromEuler([math.pi / 2, 0, 0])
-        b = p.createMultiBody(MASS["rod"], cs, basePosition=list(tower.rod_centre(name) * S), baseOrientation=q)
-        p.changeDynamics(b, -1, lateralFriction=FRICTION["rod"], collisionMargin=0.0002 * S, rollingFriction=0.0)
+        q = p.getQuaternionFromEuler([0, math.pi / 2, 0]) if d[0] else p.getQuaternionFromEuler([-math.pi / 2, 0, 0])
+        # in the cylinder's own frame its axis is z; the capped end is +z for both turns above when CAP_END is +1
+        z_cap = tower.CAP_END[name] * (tower.ROD_LEN / 2 - tower.CAP / 2) * S
+        b = p.createMultiBody(MASS["rod"], cs, basePosition=list(tower.rod_centre(name) * S), baseOrientation=q,
+                              linkMasses=[MASS["cap"]], linkCollisionShapeIndices=[cap],
+                              linkVisualShapeIndices=[-1], linkPositions=[[0, 0, z_cap]],
+                              linkOrientations=[[0, 0, 0, 1]], linkInertialFramePositions=[[0, 0, 0]],
+                              linkInertialFrameOrientations=[[0, 0, 0, 1]], linkParentIndices=[0],
+                              linkJointTypes=[p.JOINT_FIXED], linkJointAxis=[[0, 0, 1]])
+        for k in (-1, 0):
+            p.changeDynamics(b, k, lateralFriction=FRICTION["rod"], collisionMargin=0.0002 * S)
+        p.setCollisionFilterPair(b, b, -1, 0, 0)
         rods[name] = b
     marbles = {}
     for name, pos in tower.MARBLES.items():
@@ -70,14 +81,15 @@ def settle(seconds=2.0):
         p.stepSimulation()
 
 
-def pull(name, speed=0.05, sign=-1):
-    """From a fresh start: pull one rod straight out; the marbles that fell."""
+def pull(name, speed=0.05, sign=1):
+    """From a fresh start: pull one rod straight out (sign 1: toward its cap; -1: the other way, as if pushed); the
+    marbles that fell."""
     rods, marbles = build()
     settle(1.0)
     b = rods[name]
     pos0, q0 = p.getBasePositionAndOrientation(b)
     grip = p.createConstraint(b, -1, -1, -1, p.JOINT_FIXED, [0, 0, 0], [0, 0, 0], pos0, childFrameOrientation=q0)
-    d = sign * tower.rod_dir(name)
+    d = sign * tower.CAP_END[name] * tower.rod_dir(name)
     dist = tower.ROD_LEN / 2 + tower.TUBE_R_IN + 0.04
     n = int(dist / speed / DT)
     for k in range(1, n + 1):
@@ -89,17 +101,17 @@ def pull(name, speed=0.05, sign=-1):
 
 
 def demo_replay(err=(0.0, 0.0, 0.0)):
-    """The demo's motion on the blue rod: held 6.5 cm from its middle toward its pulled end, that point lifted 2 mm
-    (plus an arm error ``err``, m) and then drawn straight out. The marbles that fell, and how far out the rod got."""
+    """The demo's motion on the blue rod: held by its cap, the cap lifted 2 mm (plus an arm error ``err``, m) and
+    then drawn straight out toward the cap's end. The marbles that fell, and how far out the rod got."""
     import task_geometry as tg
     rods, marbles = build()
     settle(1.0)
     b = rods[tower.SAFE]
     pos0, q0 = p.getBasePositionAndOrientation(b)
-    d = -tower.rod_dir(tower.SAFE)
-    grip_along = tg.GRIP_ALONG                     # from the rod's middle to the grip, along d
-    grip0 = np.array(pos0) / S + d * grip_along
-    local = [0.0, 0.0, grip_along * S]            # the rod's own axis is its local z in PyBullet
+    along = tower.CAP_END[tower.SAFE] * (tower.ROD_LEN / 2 - tower.CAP / 2)
+    d = tower.CAP_END[tower.SAFE] * tower.rod_dir(tower.SAFE)      # out, toward the cap
+    grip0 = np.array(pos0) / S + tower.rod_dir(tower.SAFE) * along
+    local = [0.0, 0.0, along * S]                  # the rod's own axis is its local z in PyBullet
     hold = grip0 + np.array(err)
     lifted = hold + np.array([0.0, 0.0, tg.LIFT_BIAS])
     g = p.createConstraint(b, -1, -1, -1, p.JOINT_FIXED, [0, 0, 0], local, list(grip0 * S),
@@ -131,12 +143,10 @@ def sweep():
     ok = True
     for rod_f, marble_f in ((0.2, 0.15), (0.4, 0.3), (0.7, 0.6)):
         FRICTION.update(rod=rod_f, marble=marble_f)
-        for speed in (0.05, 0.15):
-            for sign in (-1, 1):
-                safe = [n for n in tower.RODS if not pull(n, speed, sign)]
-                ok &= safe == [tower.SAFE]
-                print(f"friction rod {rod_f} marble {marble_f}, {100 * speed:.0f} cm/s, "
-                      f"{'toward' if sign < 0 else 'away from'} the robot / its right: safe {safe}")
+        for speed in (0.03, 0.05, 0.15):
+            safe = [n for n in tower.RODS if not pull(n, speed)]
+            ok &= safe == [tower.SAFE]
+            print(f"friction rod {rod_f} marble {marble_f}, pulled by its cap at {100 * speed:.0f} cm/s: safe {safe}")
     print("OK" if ok else "FAIL")
 
 

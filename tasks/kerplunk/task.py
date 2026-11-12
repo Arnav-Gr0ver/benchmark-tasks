@@ -23,7 +23,7 @@ from yam_arena.task_file import TABLE_TOP, Box  # noqa: E402
 
 import tower  # noqa: E402
 from task_geometry import LIFT_BIAS, PULL  # noqa: E402
-from shapekit import Compound, Disc, Marble  # noqa: E402
+from shapekit import Compound, Marble  # noqa: E402
 from stepkit import on_reset, on_step  # noqa: E402
 
 SCENE = "station"
@@ -52,10 +52,22 @@ TUBE = Compound("tube", pos=world((0.0, 0.0, 0.0)), size=(0.1, 0.1, tower.TUBE_H
 ROD_COLOURS = {"far": (0.95, 0.50, 0.10), "guard": (0.15, 0.35, 0.90), "left": (0.15, 0.65, 0.25),
                "right": (0.95, 0.80, 0.10)}     # orange, blue, green, yellow
 ROD_NAMES = {n: f"rod_{c}" for n, c in (("far", "orange"), ("guard", "blue"), ("left", "green"), ("right", "yellow"))}
-ROD_MASS = 0.003                                # 6 mm birch dowel, 16 cm
-RODS = [Disc(ROD_NAMES[n], pos=world(tower.rod_centre(n)), radius=tower.ROD_R, height=tower.ROD_LEN,
-             axis=tower.RODS[n][0].upper(), mass=ROD_MASS, color=ROD_COLOURS[n], friction=(0.4, 0.35))
-        for n in tower.RODS]
+
+
+def _rod(name) -> Compound:
+    """A 6 mm, 16 cm round rod with a light 14 mm square cap over its last 14 mm at its long end. In the body's frame
+    the rod runs along x (the body is turned a quarter turn for the rods that run along y)."""
+    along = tower.CAP_END[name] * (tower.ROD_LEN / 2 - tower.CAP / 2)
+    com = tower.mass_centre(name) - tower.rod_centre(name)
+    com_along = float(com @ tower.rod_dir(name))
+    return Compound(ROD_NAMES[name], pos=world(tower.rod_centre(name)), yaw=0.0 if tower.RODS[name][0] == "x" else
+                    math.pi / 2, size=(tower.ROD_LEN, tower.CAP, tower.CAP), mass=tower.ROD_MASS + tower.CAP_MASS,
+                    color=ROD_COLOURS[name], friction=0.4, com=(com_along, 0.0, 0.0),
+                    boxes=(((0.0, 0.0, 0.0), ("cyl", tower.ROD_R, tower.ROD_LEN, "X")),
+                           ((along, 0.0, 0.0), (tower.CAP, tower.CAP, tower.CAP))))
+
+
+RODS = [_rod(n) for n in tower.RODS]
 MARBLE_MASS = 0.0055                            # 16 mm glass
 MARBLES = [Marble(n, pos=world((x, y, z + 0.0003)), size=(0.016, 0.016, 0.016), radius=tower.MARBLE_R,
                   mass=MARBLE_MASS, color=(0.55, 0.80, 0.95), friction=0.3)
@@ -144,27 +156,23 @@ def score(objects) -> float:
 # -- scripted demo --------------------------------------------------------------------------------------------------
 PAD_TIP = 0.013
 ALONG_X = math.pi / 2                   # grip yaw: the fingers close along x, across a rod that runs along y
-_g = world(tower.rod_centre(tower.SAFE))
-GRIP_Y = _g[1] - tower.ROD_LEN / 2 + 0.015          # 1.5 cm in from the blue rod's long end, on the robot's right
-# WHY deep: the fingers taper to their tips, so a round rod held near the tips is squeezed down and out of them. With
-# the tips 12 mm below the rod (nothing is under its end out here), the flat of the pads closes on its middle.
-TIPS_BELOW = 0.012
-# WHY lift: pulled while pressed down into its holes' sills, a rod drags hard enough to slip out of the fingers; lifted,
-# it rides free (its holes are open on top). Holding its end 2 mm up keeps it lifted even if the arm sits a little low.
-GRIP = (_g[0], GRIP_Y, _g[2] - TIPS_BELOW + PAD_TIP)
+CAP_AT = world(tower.cap_centre(tower.SAFE))
+# The fingers hold the blue rod's cap by its flat faces, their tips 2 mm above its underside (as the jigsaw's peg or a
+# stick is held). A bare 6 mm round rod is too small and round for these tapered fingers to pinch reliably.
+GRIP = (CAP_AT[0], CAP_AT[1], CAP_AT[2] - tower.CAP / 2 + 0.002 + PAD_TIP)
 DROP_Z = TOP + 0.03
 
 
 def demo():
-    """The right arm closes round the blue rod's long end on the robot's right (the fingertips 12 mm below it), lifts
-    that end 2 mm off its hole's sill, slides the rod straight out (to its right) over 5 s until its far end is 3 cm
-    past the wall, carries it clear of the tower and lays it on the table."""
+    """The right arm takes the blue rod by its cap (on the robot's right), lifts that end 2 mm off its hole's sill,
+    slides the rod straight out (to its right) over 5 s until its far end is 3 cm past the wall, carries it clear of
+    the tower and lays it on the table."""
     a, c = 0.30 * FINGER_OPEN, FINGER_CLOSED
     x, y, z = GRIP
     up = z + LIFT_BIAS
     out = (x, y - PULL, up)
     return {"right": [
-        Waypoint(2.0, (x, y, z + 0.05), a, "above the blue rod's end", ALONG_X),
+        Waypoint(2.0, (x, y, z + 0.05), a, "above the blue rod's cap", ALONG_X),
         Waypoint(1.5, (x, y, z), a, "down round it", ALONG_X),
         Waypoint(0.8, (x, y, z), c, "grip", ALONG_X),
         Waypoint(0.5, (x, y, up), c, "lift its end 2 mm", ALONG_X),

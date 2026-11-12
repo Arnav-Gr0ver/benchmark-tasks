@@ -49,6 +49,19 @@ RODS = {
 # 2.8 mm apart, so they stick out unevenly (the guard 2 cm further on the robot's right, the far rod on its left),
 # leaving each one's long end clear to hold.
 SHIFT = {"far": 0.020, "guard": -0.020, "left": 0.0, "right": 0.0}
+# Each rod's long end (the one a hand pulls it by) carries a light square cap, the rod's colour marker and something a
+# gripper can hold by its flat faces: +1 at the rod's +x / +y end, -1 at its -x / -y end.
+CAP, CAP_MASS, ROD_MASS = 0.014, 0.0005, 0.003
+CAP_END = {"far": 1, "guard": -1, "left": -1, "right": -1}
+
+
+def cap_centre(name: str) -> np.ndarray:
+    """The cap covers the rod's last 14 mm at its capped end."""
+    return rod_centre(name) + CAP_END[name] * rod_dir(name) * (ROD_LEN / 2 - CAP / 2)
+
+
+def mass_centre(name: str) -> np.ndarray:
+    return (ROD_MASS * rod_centre(name) + CAP_MASS * cap_centre(name)) / (ROD_MASS + CAP_MASS)
 SAFE = "guard"
 
 _SIDE_X = math.sqrt(_ON_WALL ** 2 - PAIR ** 2)

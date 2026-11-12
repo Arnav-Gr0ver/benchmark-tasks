@@ -5,12 +5,13 @@
   are ``radius`` from its axis, one flat facing each way across and down), so a gripper's pads press on flats rather
   than touching a round edge at one point; its state is then a :class:`BodyState` (the disc's centre). Without, it is
   a plain cylinder and its state is yam_arena's own.
-- :class:`Compound`: one body made of several boxes (here the tube with its wall and sleeves), loose or fixed, turned
-  ``yaw`` about the vertical; a box can be turned about x, y and z; the body can be see-through (``opacity``). Its
-  state is a :class:`BodyState`: the body origin's pose.
+- :class:`Compound`: one body made of several boxes and cylinders (here the tube with its wall and holes, and each rod
+  with its cap), loose or fixed, turned ``yaw`` about the vertical; a box can be turned about x, y and z; a part given
+  as (centre, ("cyl", radius, length, axis)) is a cylinder; the body can be see-through (``opacity``) and its parts
+  coloured one by one (``part_colors``). Its state is a :class:`BodyState`: the body origin's pose.
 - :class:`Marble`: a ball with its own friction. Its state is a :class:`BodyState`.
 
-A plain Disc (no ridges) here is a rod: a cylinder along x or y, with its own friction.
+A plain Disc (no ridges) is a cylinder along x or y with its own friction.
 
 Importing this module hooks ``yam_arena.scene`` without changing yam_arena. Pure Python at import time; everything
 that needs Isaac Sim is imported lazily, inside the functions.
@@ -62,6 +63,8 @@ class Compound(Box):
     boxes: tuple[BoxSpec, ...] = ()
     friction: float = 0.8
     opacity: float = 1.0
+    part_colors: tuple = ()     # optional: one colour per part (else ``color`` for all)
+    com: tuple | None = None    # optional: the centre of mass in the body's frame (else from its parts, as if solid)
 
     def _check(self) -> None:
         super()._check()
@@ -147,6 +150,12 @@ def _spawn_compound(prim_path: str, cfg, translation=None, orientation=None, **k
     vis = sim_utils.PreviewSurfaceCfg(diffuse_color=linear_rgb(spec.color), roughness=0.5,
                                       opacity=float(getattr(spec, "opacity", 1.0)))
     vis.func(look, vis)
+    looks = []
+    for k, rgb in enumerate(getattr(spec, "part_colors", ()) or ()):
+        path = f"{prim_path}/Looks/part_{k}"
+        cfg_k = sim_utils.PreviewSurfaceCfg(diffuse_color=linear_rgb(tuple(rgb)), roughness=0.5)
+        cfg_k.func(path, cfg_k)
+        looks.append(path)
 
     body = f"{prim_path}/body"
     xform = UsdGeom.Xform.Define(stage, body)
@@ -155,25 +164,38 @@ def _spawn_compound(prim_path: str, cfg, translation=None, orientation=None, **k
     if spec.free:
         prim = xform.GetPrim()
         UsdPhysics.RigidBodyAPI.Apply(prim)
-        UsdPhysics.MassAPI.Apply(prim).CreateMassAttr(spec.mass)
+        mass_api = UsdPhysics.MassAPI.Apply(prim)
+        mass_api.CreateMassAttr(spec.mass)
+        if getattr(spec, "com", None) is not None:
+            mass_api.CreateCenterOfMassAttr(Gf.Vec3f(*(float(v) for v in spec.com)))
         rb = PhysxSchema.PhysxRigidBodyAPI.Apply(prim)
         rb.CreateMaxDepenetrationVelocityAttr(1.0)
         rb.CreateSolverPositionIterationCountAttr(32)
     for i, box in enumerate(spec.boxes):
         centre, size = box[0], box[1]
-        tilt = tuple(box[2]) + (0.0,) * (3 - len(box[2])) if len(box) > 2 else (0.0, 0.0, 0.0)
-        cube = UsdGeom.Cube.Define(stage, f"{body}/box_{i}")
-        cube.CreateSizeAttr(1.0)
-        cube.AddTranslateOp().Set(Gf.Vec3d(*centre))
-        if any(tilt):
-            cube.AddRotateXYZOp().Set(Gf.Vec3f(float(tilt[0]), float(tilt[1]), float(tilt[2])))
-        cube.AddScaleOp().Set(Gf.Vec3f(*size))
-        UsdPhysics.CollisionAPI.Apply(cube.GetPrim())
-        cp = PhysxSchema.PhysxCollisionAPI.Apply(cube.GetPrim())
+        if isinstance(size, tuple) and size and size[0] == "cyl":   # ("cyl", radius, length, axis "X" / "Y" / "Z")
+            _, radius, length, axis = size
+            cyl = UsdGeom.Cylinder.Define(stage, f"{body}/cyl_{i}")
+            cyl.CreateRadiusAttr(float(radius))
+            cyl.CreateHeightAttr(float(length))
+            cyl.CreateAxisAttr(axis)
+            cyl.AddTranslateOp().Set(Gf.Vec3d(*centre))
+            prim = cyl.GetPrim()
+        else:
+            tilt = tuple(box[2]) + (0.0,) * (3 - len(box[2])) if len(box) > 2 else (0.0, 0.0, 0.0)
+            cube = UsdGeom.Cube.Define(stage, f"{body}/box_{i}")
+            cube.CreateSizeAttr(1.0)
+            cube.AddTranslateOp().Set(Gf.Vec3d(*centre))
+            if any(tilt):
+                cube.AddRotateXYZOp().Set(Gf.Vec3f(float(tilt[0]), float(tilt[1]), float(tilt[2])))
+            cube.AddScaleOp().Set(Gf.Vec3f(*size))
+            prim = cube.GetPrim()
+        UsdPhysics.CollisionAPI.Apply(prim)
+        cp = PhysxSchema.PhysxCollisionAPI.Apply(prim)
         cp.CreateContactOffsetAttr(0.001)  # under the fits' clearances, so neighbouring parts don't touch early
         cp.CreateRestOffsetAttr(0.0)
-        bind_physics_material(str(cube.GetPath()), phys, stage=stage)
-        bind_visual_material(str(cube.GetPath()), look, stage=stage)
+        bind_physics_material(str(prim.GetPath()), phys, stage=stage)
+        bind_visual_material(str(prim.GetPath()), looks[i] if looks else look, stage=stage)
     return root.GetPrim()
 
 
