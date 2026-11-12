@@ -9,5 +9,6 @@
   "run_limit": "1,200 steps (1 minute at 20 Hz)",
   "reset_notes": "Slide the red car back to its cells and the yellow car back down; check every vehicle sits on its marks.",
   "fidelity": "Rigid bodies. The board, walls and apron are fixed; the seven vehicles are free. Vehicles and board are slick (friction 0.2, smooth plastic), so vehicles slide when pushed. Real Rush Hour vehicles are about 2 cm wide on 2.3 cm cells; these are scaled up and given pegs so a parallel gripper can hold them without touching the neighbours.",
-  "scores": "Dream-1 run: TBD; demo: TBD"
+  "scores": "Dream-1 run: 0.0; demo: 1.0",
+  "media": "M-6RYEV3"
 }
