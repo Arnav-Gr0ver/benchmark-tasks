@@ -1,0 +1,19 @@
+{
+  "title": "Pick-up sticks: take out the trapped red stick",
+  "category": "Societal relevance",
+  "keywords": [
+    "pick-up sticks",
+    "contact-aware extraction",
+    "clutter",
+    "dependency reasoning",
+    "sequencing"
+  ],
+  "instruction": "Remove the red stick from the pile. You may remove the blue stick first, but do not disturb the green, yellow, or black sticks.",
+  "context": "Taking one part out of a tight pile without disturbing its neighbours is the core of disassembly and bin clearing. Here the blue stick rests across the red one, so lifting red first drops blue onto the protected sticks; the safe plan is blue first, then red, with the fingers threading between sticks 22 mm apart.",
+  "setup": "Positions in cm from the midpoint between the two arm bases, on the table (x forward, y left). Five square beech sticks, 14 x 0.8 x 0.8 cm, 6 g, loose on the table. Red: centred at x 30, y 0, lying along x. Yellow: x 30, y 3, along x. Black: x 30, y -3, along x (2.2 cm gaps either side of red). Green: x 38.6, y 0, lying along y, across the far ends of the three, 1.2 cm past them. Blue: x 30, y 0, lying along y across the middles of yellow, red and black, resting on all three (its underside 8 mm up). A cream mat (16 x 16 cm, 2 mm) for removed sticks is taped to the table centred at x 30, y -20.",
+  "scoring": "Watched through the run, scored at its end. 0 if the green, yellow or black stick ever moves more than 3 mm or turns more than 3 degrees from where it lay. Otherwise: 1.0 if the red stick lies on the mat (its centre over the mat, resting on it), at rest for 1 s; 0.5 if the blue stick is out of the pile (on the mat or its centre more than 10 cm from the pile's centre) but the red stick is not on the mat; 0 otherwise. Any order of moves that gets this outcome counts.",
+  "run_limit": "3,600 steps (3 minutes at 20 Hz)",
+  "reset_notes": "Lay the sticks back on a printed placement template in order: red, yellow, black, green, then blue across the middle of the three.",
+  "fidelity": "Rigid boxes, all five sticks free (friction 0.5, wood on wood); the mat is fixed. Real pick-up sticks are round; these are square so they lie still in a fixed layout. Checked in PyBullet (check_physics.py) with stand-in fingers: blue first, then red, moves the protected sticks under 0.1 mm; lifting red first drops blue onto them (97 mm).",
+  "scores": "Dream-1 run: TBD; demo: TBD"
+}
