@@ -15,5 +15,6 @@
   "run_limit": "2,400 steps (2 minutes at 20 Hz)",
   "reset_notes": "Lift the tube off its base to tip out fallen marbles, push the rods back to their marks (positions in tower.py), and set each marble against the wall on its ledge.",
   "fidelity": "Rigid bodies. Tube and base fixed; rods free (friction 0.4), lying in loose holes 1 mm clear either side; marbles free (friction 0.3). Checked in PyBullet (check_physics.py): pulling each rod out drops 2, 0 (blue), 2 and 1 marbles, the same at friction 0.2 to 0.7, 5 or 15 cm/s, either direction; the demo's pull works with the arm 2 mm off.",
-  "scores": "Dream-1 run: TBD; demo: TBD"
+  "scores": "Dream-1 run: 0.0; demo: 1.0",
+  "media": "M-CQ7TK9"
 }
