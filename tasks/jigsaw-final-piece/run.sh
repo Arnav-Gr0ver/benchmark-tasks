@@ -36,6 +36,7 @@ ffmpeg -loglevel error -y -i "${OUT}_top.mp4" -i "${OUT}_left.mp4" -i "${OUT}_ri
 [ "$MODE" = demo ] && ffmpeg -loglevel error -y -i "${OUT}_top.mp4" -frames:v 1 ~/"${TASK}_${STAMP}_setup.png"
 echo
 echo "Score: $(grep -o -i 'task_score[^,}]*' "$LOG.txt" | tail -1)"
+grep "^\[task\]" "$LOG.txt" | tail -1
 grep -i -E "Traceback|Error" "$LOG.txt" | tail -3
 echo "In your home folder:"
 ls "${OUT}_all.mp4" 2>/dev/null

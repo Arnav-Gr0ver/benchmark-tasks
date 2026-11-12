@@ -4,7 +4,8 @@
 shape is a set of convex prisms (``parts``, polygons in the piece's frame), its picture a set of thin coloured
 triangle meshes on its top face (``decals``, visual only), and optionally a square peg ``knob`` glued at its centre.
 Loose with a ``mass``, fixed without. A loose piece's prisms can be bevelled underneath (``bottoms``: each part's
-underside, or None for a part that starts ``chamfer`` above the floor). Its state is a :class:`BodyState`: the pose
+underside, or None for a part that starts ``chamfer`` above the floor). A fixed piece can instead be one exact
+triangle-mesh collider (``outline`` and ``triangles``, its top face). Its state is a :class:`BodyState`: the pose
 of the piece's frame (origin at the middle of its cell, on its underside).
 
 Importing this module hooks ``yam_arena.scene`` without changing yam_arena. Pure Python at import time; everything
@@ -33,15 +34,19 @@ class Piece(Box):
     thick: float = 0.006
     decals: tuple = ()         # (rgb, ((x, y), (x, y), (x, y)) triangles ...)
     bottoms: tuple = ()        # per part: its underside polygon, or None; empty: no bevel
-    chamfer: float = 0.0008
+    chamfer: float = 0.0025    # the bevel's height
+    outline: tuple = ()        # with ``triangles``: a fixed piece is one exact triangle-mesh collider instead of
+    triangles: tuple = ()      # convex parts (its outline, and its top face's triangles)
     knob: tuple | None = None  # (side, height), m
     knob_color: tuple = (0.80, 0.62, 0.40)
     friction: float = 0.6
 
     def _check(self) -> None:
         super()._check()
-        if not self.parts:
-            raise ValueError(f"{self.name}: a Piece needs its parts")
+        if not self.parts and not (self.triangles and self.outline):
+            raise ValueError(f"{self.name}: a Piece needs its parts, or its outline and triangles")
+        if self.triangles and self.free:
+            raise ValueError(f"{self.name}: only a fixed piece can be a triangle mesh")
         if self.bottoms and len(self.bottoms) != len(self.parts):
             raise ValueError(f"{self.name}: one bottom per part")
 
@@ -88,6 +93,24 @@ def prism_mesh(part, z0: float, z1: float, bottom=None, chamfer: float = 0.0):
         pts += [(x, y, z0) for x, y in bottom]
         counts.append(m)
         idx += list(range(2 * n + m - 1, 2 * n - 1, -1))
+    return pts, counts, idx
+
+
+def solid_mesh(outline, triangles, z0: float, z1: float):
+    """A fixed piece as one closed mesh: its top's triangles at z1, the same turned over at z0, and its sides."""
+    pts, counts, idx = [], [], []
+    for t in triangles:
+        base = len(pts)
+        pts += [(x, y, z1) for x, y in t] + [(x, y, z0) for x, y in t]
+        counts += [3, 3]
+        idx += [base, base + 1, base + 2, base + 5, base + 4, base + 3]
+    n = len(outline)
+    base = len(pts)
+    pts += [(x, y, z0) for x, y in outline] + [(x, y, z1) for x, y in outline]
+    for k in range(n):
+        j = (k + 1) % n
+        counts.append(4)
+        idx += [base + k, base + j, base + n + j, base + n + k]
     return pts, counts, idx
 
 
@@ -138,7 +161,19 @@ def _spawn_piece(prim_path: str, cfg, translation=None, orientation=None, **kwar
         cp.CreateRestOffsetAttr(0.0)
         bind_physics_material(str(gprim.GetPath()), phys, stage=stage)
 
-    for i, part in enumerate(spec.parts):
+    if spec.triangles:  # fixed: one exact triangle mesh (PhysX allows these for static colliders)
+        pts, counts, idx = solid_mesh(spec.outline, spec.triangles, 0.0, spec.thick)
+        mesh = UsdGeom.Mesh.Define(stage, f"{body}/solid")
+        mesh.CreatePointsAttr([Gf.Vec3f(*p) for p in pts])
+        mesh.CreateFaceVertexCountsAttr(counts)
+        mesh.CreateFaceVertexIndicesAttr(idx)
+        mesh.CreateSubdivisionSchemeAttr("none")
+        geom = mesh.GetPrim()
+        collider(geom)
+        UsdPhysics.MeshCollisionAPI.Apply(geom).CreateApproximationAttr("none")
+        bind_visual_material(str(geom.GetPath()), wood, stage=stage)
+
+    for i, part in enumerate(() if spec.triangles else spec.parts):
         bottom = spec.bottoms[i] if spec.bottoms else None
         pts, counts, idx = prism_mesh(part, 0.0, spec.thick, bottom, spec.chamfer if spec.bottoms else 0.0)
         mesh = UsdGeom.Mesh.Define(stage, f"{body}/part_{i}")
@@ -149,6 +184,12 @@ def _spawn_piece(prim_path: str, cfg, translation=None, orientation=None, **kwar
         geom = mesh.GetPrim()
         collider(geom)
         UsdPhysics.MeshCollisionAPI.Apply(geom).CreateApproximationAttr("convexHull")
+        try:  # WHY: PhysX thickens hulls thinner than 1 mm by default, which would eat the fit's clearance
+            hull = PhysxSchema.PhysxConvexHullCollisionAPI.Apply(geom)
+            hull.CreateMinThicknessAttr(0.0001)
+            hull.CreateHullVertexLimitAttr(128)
+        except Exception:  # noqa: BLE001  (older schemas)
+            pass
         bind_visual_material(str(geom.GetPath()), wood, stage=stage)
 
     for k, (rgb, tris) in enumerate(spec.decals):  # the printed picture: visual only, 0.2 mm above the top face

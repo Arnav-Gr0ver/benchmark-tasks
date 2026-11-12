@@ -14,11 +14,11 @@ them is the missing piece:
 The robot has to tell them apart by both cues: the picture near the hole's edge must continue its neighbours'
 (the river, the meadow and the hill line run through the hole), and the tabs and sockets must interlock with the
 neighbours'. The hole's neighbours toward and away from the robot reach into it with tabs; its left and right
-neighbours have sockets. Tabs sit slightly off their edges' middles, so the missing piece fits only one way round:
+neighbours have sockets. Tabs sit up to 4 mm off their edges' middles, so the missing piece fits only one way round:
 from where it lies it must be turned 125 degrees, then lowered straight down into the hole (its round-headed tabs
 lock it in sideways).
 
-Checked offline (`test_jigsaw.py`): `piece_c` and `piece_b` fit the hole at 1 mm clearance only unturned; every other
+Checked offline (`test_jigsaw.py`): `piece_c` and `piece_b` fit the hole at 1.6 mm clearance only unturned; every other
 piece and turn overlaps a neighbour by at least 20 mm²; only `piece_a` and `piece_c` unturned show the picture the
 neighbours continue, every other piece and turn differs along at least a quarter of the hole's edge.
 
@@ -57,8 +57,9 @@ inspect-robots run --embodiment yam_arena --policy dream \
 ```
 
 The scripted demo is the same command with `--policy yam_scripted --max-steps 600`. The right arm takes `piece_c`
-by its peg, lifts it, turns it 125 degrees while carrying it over the hole, lowers it until it is 2 mm above the
-base, lets go, then presses the peg down once with closed fingers. About 16 s (320 steps).
+by its peg, lifts it, turns it 125 degrees while carrying it over the hole, lowers it until it is just above the
+board and lets go: it drops into the hole, its bevelled bottom edge taking up a few millimetres of misplacement. Then
+the arm presses the peg down twice with closed fingers. About 17 s (340 steps).
 
 ## Scoring
 
@@ -84,8 +85,8 @@ python -m pytest test_jigsaw.py -q
 ## Real-world build
 
 Print `print_and_cut.svg` at 100% on sticker paper, stick it on 6 mm birch plywood and laser-cut the red lines. Each
-piece is cut on its own outline, so neighbours end up 1 mm apart; the 1 mm strips between them are scrap. Lightly
-sand the bottom edge of the four loose pieces (about 0.8 mm). Glue the 15 board pieces onto a 200 x 200 x 4 mm
+piece is cut on its own outline, so neighbours end up 1.6 mm apart; the strips between them are scrap. Bevel
+the bottom edge of the four loose pieces (2 mm in over 2.5 mm up, a chamfer bit or sandpaper). Glue the 15 board pieces onto a 200 x 200 x 4 mm
 dark-painted MDF base in their places; the board piece marked as `piece_c` is the missing piece. Cut `piece_a`,
 `piece_b` and `piece_d` from the second column of the sheet. Glue a 12 x 12 x 14 mm pine peg at the centre of each
 loose piece (its cell's centre: the middle of the 44 mm square the tabs grow from). Tape the base to the table and

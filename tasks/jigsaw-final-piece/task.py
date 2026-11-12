@@ -58,14 +58,20 @@ def _tuples(points):
     return tuple(tuple(p) for p in points)
 
 
+BEVEL_IN, BEVEL_UP = DATA["bevel"]       # a loose piece's bottom edge: bevelled 2 mm in over 2.5 mm up
+
+
 def _piece(name, rec, pos, *, yaw=0.0, mass=None, knob=None):
     decals = tuple((tuple(d["color"]), tuple(_tuples(t) for t in d["triangles"])) for d in rec["decals"])
-    bottoms = tuple(None if b is None else _tuples(b) for b in rec.get("bottoms", ())) if mass else ()
     xs = [p[0] for p in rec["outline"]]
     ys = [p[1] for p in rec["outline"]]
     size = (max(xs) - min(xs), max(ys) - min(ys), THICK + (knob[1] if knob else 0.0))
-    return Piece(name, pos=pos, yaw=yaw, mass=mass, size=size, color=PLYWOOD, thick=THICK,
-                 parts=tuple(_tuples(p) for p in rec["parts"]), decals=decals, bottoms=bottoms, knob=knob)
+    common = dict(pos=pos, yaw=yaw, mass=mass, size=size, color=PLYWOOD, thick=THICK, decals=decals, knob=knob)
+    if mass is None:  # glued down: one exact collider
+        return Piece(name, outline=_tuples(rec["outline"]), triangles=tuple(_tuples(t) for t in rec["triangles"]),
+                     **common)
+    bottoms = tuple(None if b is None else _tuples(b) for b in rec["bottoms"])
+    return Piece(name, parts=tuple(_tuples(p) for p in rec["parts"]), bottoms=bottoms, chamfer=BEVEL_UP, **common)
 
 
 BASE = Box("board_base", pos=(*BOARD_XY, TOP + BASE_T / 2), size=(BASE_SIZE, BASE_SIZE, BASE_T), color=BASE_COLOUR)
@@ -124,20 +130,26 @@ def success(objects) -> bool:
     return outcome(objects)[0] == 1.0 and objects[CORRECT].resting()
 
 
+_LAST = {"why": None}
+
+
 def score(objects) -> float:
     """1.0 the missing piece seated: centre within 2.5 mm of the hole's, turned within 5 degrees of the way it fits,
     flat on the base (underside within 1.5 mm of it, tilted at most 3 degrees). 0.5 the missing piece over the hole
     but not seated: centre within 1.5 cm of the hole's, lying in or on it. 0 otherwise, and 0 whenever a wrong piece
     lies in or on the hole."""
-    return outcome(objects)[0]
+    value, why = outcome(objects)
+    if why.split(" (")[0] != _LAST["why"]:  # a line in the run's log each time the verdict changes
+        _LAST["why"] = why.split(" (")[0]
+        print(f"[task] {value}: {why}", flush=True)
+    return value
 
 
 # -- scripted demo --------------------------------------------------------------------------------------------------
 PAD_TIP = 0.013                          # the fingertips, below the TCP
 KNOB_GRIP = 0.002                        # fingertips this far above the piece's top face while holding the peg
-LET_GO = 0.002                           # the piece's underside this far above the base when let go
 PICK_Z = TOP + 0.0005 + THICK + KNOB_GRIP + PAD_TIP
-PLACE_Z = BASE_TOP + LET_GO + THICK + KNOB_GRIP + PAD_TIP
+DROP_Z = BASE_TOP + THICK + 0.0015 + THICK + KNOB_GRIP + PAD_TIP   # the piece's underside 1.5 mm above the board
 PRESS_Z = BASE_TOP + THICK + KNOB[1] + PAD_TIP   # closed fingertips on the peg's top, the piece seated
 TRAVEL_Z = TOP + 0.10
 RELEASE = 0.45 * FINGER_OPEN
@@ -153,7 +165,8 @@ def grip_yaws():
 
 def demo():
     """The right arm takes the missing piece by its peg, lifts it, turns it the way it fits while carrying it over
-    the hole, lowers it in, lets go, and presses its peg down once."""
+    the hole, lowers it until it is just above the board and lets go (it drops into the hole, its bevel taking up a
+    few millimetres of misplacement), then presses its peg down twice with closed fingers."""
     f0, f1 = FINGER_OPEN, FINGER_CLOSED
     (px, py), _ = START[CORRECT]
     hx, hy = HOLE_XY
@@ -164,12 +177,14 @@ def demo():
         Waypoint(0.8, (px, py, PICK_Z), f1, "grip", g0),
         Waypoint(1.2, (px, py, TRAVEL_Z), f1, "lift", g0),
         Waypoint(3.0, (hx, hy, TRAVEL_Z), f1, "over the hole, turning", g1),
-        Waypoint(1.5, (hx, hy, PLACE_Z + 0.012), f1, "down", g1),
-        Waypoint(1.5, (hx, hy, PLACE_Z), f1, "into the hole", g1),
-        Waypoint(0.5, (hx, hy, PLACE_Z), f1, "steady", g1),
-        Waypoint(0.6, (hx, hy, PLACE_Z), RELEASE, "let go", g1),
-        Waypoint(0.8, (hx, hy, PRESS_Z + 0.01), RELEASE, "up", g1),
-        Waypoint(0.5, (hx, hy, PRESS_Z + 0.01), f1, "close", g1),
-        Waypoint(1.0, (hx, hy, PRESS_Z - 0.001), f1, "press the peg", g1),
+        Waypoint(1.5, (hx, hy, DROP_Z + 0.01), f1, "down", g1),
+        Waypoint(1.0, (hx, hy, DROP_Z), f1, "just above the board", g1),
+        Waypoint(0.5, (hx, hy, DROP_Z), f1, "steady", g1),
+        Waypoint(0.5, (hx, hy, DROP_Z), RELEASE, "let go", g1),
+        Waypoint(0.6, (hx, hy, PRESS_Z + 0.012), RELEASE, "up", g1),
+        Waypoint(0.4, (hx, hy, PRESS_Z + 0.012), f1, "close", g1),
+        Waypoint(1.0, (hx, hy, PRESS_Z - 0.002), f1, "press the peg", g1),
+        Waypoint(0.5, (hx, hy, PRESS_Z + 0.004), f1, "ease off", g1),
+        Waypoint(0.8, (hx, hy, PRESS_Z - 0.002), f1, "press again", g1),
         Waypoint(1.0, (hx, hy, TRAVEL_Z), f1, "up", g1),
     ]}

@@ -15,7 +15,7 @@ HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 task_file = pytest.importorskip("yam_arena.task_file")
 import task  # noqa: E402
-from puzzlekit import BodyState, prism_mesh  # noqa: E402
+from puzzlekit import BodyState, prism_mesh, solid_mesh  # noqa: E402
 
 DECOYS = [n for n in task.START if n != task.CORRECT]
 
@@ -45,7 +45,7 @@ def test_only_the_missing_piece_fits_and_only_one_way_round():
             overlap = p.intersection(board).area * 1e6           # mm^2
             fits = name in (task.CORRECT, "piece_b") and deg == 0
             if fits:
-                assert overlap == 0.0 and p.distance(board) >= 0.0009, (name, deg)   # 1 mm clear all round
+                assert overlap == 0.0 and p.distance(board) >= 0.0015, (name, deg)   # 1.6 mm clear all round
             else:
                 assert overlap > 20.0, (name, deg, overlap)       # blocked by a neighbour's tab or body
 
@@ -102,10 +102,24 @@ def test_the_peg_sits_on_solid_plywood():
 def test_prism_meshes_are_closed_and_bevelled():
     rec = task.DATA["candidates"][task.CORRECT]
     for part, bottom in zip(rec["parts"], rec["bottoms"]):
-        pts, counts, idx = prism_mesh(part, 0.0, task.THICK, bottom, 0.0008)
+        pts, counts, idx = prism_mesh(part, 0.0, task.THICK, bottom, task.BEVEL_UP)
         assert sum(counts) == len(idx) and max(idx) == len(pts) - 1
         zs = sorted({round(p[2], 6) for p in pts})
-        assert zs == ([0.0, 0.0008, task.THICK] if bottom else [0.0008, task.THICK])
+        assert zs == ([0.0, task.BEVEL_UP, task.THICK] if bottom else [task.BEVEL_UP, task.THICK])
+
+
+def test_glued_pieces_are_closed_meshes_facing_out():
+    for rec in task.DATA["placed"].values():
+        pts, counts, idx = solid_mesh(rec["outline"], rec["triangles"], 0.0, task.THICK)
+        assert sum(counts) == len(idx) and max(idx) == len(pts) - 1
+        area = 0.0
+        for (ax, ay), (bx, by), (cx, cy) in rec["triangles"]:
+            cross = (bx - ax) * (cy - ay) - (by - ay) * (cx - ax)
+            assert cross > 0                                           # top faces up
+            area += cross / 2
+        xs, ys = zip(*rec["outline"])
+        shoelace = 0.5 * sum(x0 * y1 - x1 * y0 for x0, y0, x1, y1 in zip(xs, ys, xs[1:] + xs[:1], ys[1:] + ys[:1]))
+        assert shoelace > 0 and math.isclose(area, shoelace, rel_tol=1e-3)  # outline counterclockwise, fully covered
 
 
 def _state(pos, yaw_deg=0.0, tilt_deg=0.0):
@@ -153,9 +167,10 @@ def test_loose_pieces_lie_apart_and_off_the_board():
         assert abs(y) - reach > task.BASE_SIZE / 2 + 0.02
 
 
-def test_fingers_stay_above_the_board():
-    tips = task.PLACE_Z - task.PAD_TIP
-    assert tips >= task.BASE_TOP + task.THICK + 0.003                  # above the neighbours' tops while lowering
+def test_the_piece_is_let_go_just_above_the_board_and_the_fingers_stay_above_it():
+    underside = task.DROP_Z - task.PAD_TIP - task.KNOB_GRIP - task.THICK
+    assert 0.0 < underside - (task.BASE_TOP + task.THICK) <= 0.002     # dropped from 1.5 mm above the neighbours
+    assert task.PRESS_Z - 0.002 - task.PAD_TIP > task.BASE_TOP + task.THICK + 0.008   # pressing: tips stay above them
     assert task.PICK_Z - task.PAD_TIP > task.TOP + task.THICK + 0.001  # above the piece's top at the pick
 
 

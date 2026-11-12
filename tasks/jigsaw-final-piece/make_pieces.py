@@ -32,11 +32,11 @@ HERE = pathlib.Path(__file__).resolve().parent
 N = 4
 CELL = 44.0
 HALF_BOARD = N * CELL / 2
-CLEARANCE = 1.0            # between neighbouring pieces, everywhere
+CLEARANCE = 1.6            # between neighbouring pieces, everywhere
 NECK_W = 7.0               # a tab's neck, across
 HEAD_R = 6.0               # its round head
 HEAD_C = 8.0               # head centre, out from the edge (a tab reaches 14 mm)
-JITTER_OFFSET = 2.5        # a tab sits up to this far off its edge's middle
+JITTER_OFFSET = 4.0        # a tab sits up to this far off its edge's middle
 JITTER_R = 0.5             # and its head is up to this much bigger or smaller
 SEED = 11
 
@@ -293,8 +293,9 @@ def r4(v):
     return round(float(v) / 1000.0, 5)  # mm -> m
 
 
-CHAMFER = 0.8   # mm: a loose piece's bottom edge is bevelled this much, so a piece let go slightly off its hole
-#                 slides in instead of landing on a neighbour's edge
+CHAMFER = 2.0       # mm in from the edge, and
+CHAMFER_H = 2.5     # mm up: a loose piece's bottom edge is bevelled, so a piece let go a few millimetres off its hole
+#                     lands on the bevel and slides in instead of resting on a neighbour's edge
 
 
 def bottom_of(part, outline):
@@ -306,7 +307,7 @@ def bottom_of(part, outline):
     return list(orient(p.convex_hull, 1.0).exterior.coords)[:-1]
 
 
-def piece_record(outline: Polygon, regions, centre, chamfer=False):
+def piece_record(outline: Polygon, regions, centre, chamfer=False, solid=False):
     """What task.py needs: the outline, its convex parts and the printed picture's triangles, in metres in the
     piece's own frame (origin at its cell's centre)."""
     loc = local(outline, centre)
@@ -327,6 +328,9 @@ def piece_record(outline: Polygon, regions, centre, chamfer=False):
         "parts": [[[r4(a), r4(b)] for a, b in p] for p in parts],
         "decals": decals,
     }
+    if solid:  # a glued piece is one exact (triangle-mesh) collider: its top's triangles
+        tris = [t if _cross(*t) > 0 else t[::-1] for t in triangulate(loc)]   # counterclockwise seen from above
+        rec["triangles"] = [[[r4(a), r4(b)] for a, b in t] for t in tris]
     if chamfer:
         rec["bottoms"] = [None if b is None else [[r4(x), r4(y)] for x, y in b]
                           for b in (bottom_of(p, loc) for p in parts)]
@@ -335,13 +339,14 @@ def piece_record(outline: Polygon, regions, centre, chamfer=False):
 
 def build():
     board = picture()
-    out = {"cell": CELL / 1000, "clearance": CLEARANCE / 1000, "hole": list(HOLE), "placed": {}, "candidates": {},
-           "correct": CORRECT}
+    out = {"cell": CELL / 1000, "clearance": CLEARANCE / 1000, "bevel": [CHAMFER / 1000, CHAMFER_H / 1000],
+           "hole": list(HOLE), "placed": {}, "candidates": {}, "correct": CORRECT}
     for c in cells():
         if c == HOLE:
             continue
         out["placed"][f"piece_{c[0]}{c[1]}"] = {"cell": list(c), "edges": edge_kinds(c),
-                                                **piece_record(piece_outline(raw_piece(c)), board, cell_centre(c))}
+                                                **piece_record(piece_outline(raw_piece(c)), board, cell_centre(c),
+                                                             solid=True)}
     for name, (kinds, transform, what) in CANDIDATES.items():
         outline = piece_outline(raw_piece(HOLE, kinds))
         out["candidates"][name] = {"edges": kinds, "what": what,
@@ -376,7 +381,7 @@ def svg(data_board, data_candidates):
     for c in cells():
         body.append(f'<path d="{path(to_sheet(piece_outline(raw_piece(c))), margin, margin)}" fill="none" '
                     f'stroke="#ff0000" stroke-width="0.1"/>')
-    notes = ("Board: cut all 16 outlines (each piece is cut on its own, 1 mm clear of its neighbours).",
+    notes = ("Board: cut all 16 outlines (each piece is cut on its own, 1.6 mm clear of its neighbours).",
              "Glue 15 to a 200 x 200 mm dark base; the one in row 2 from the bottom, column 2 from",
              "the right is piece_c, the missing piece. Glue a 12 mm square, 14 mm peg on each loose piece.")
     for k, line in enumerate(notes):
