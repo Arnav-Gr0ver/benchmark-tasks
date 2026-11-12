@@ -147,8 +147,8 @@ def score(objects) -> float:
     centre ever drops 20 mm below the lowest rods, if more than one rod is half out, or if a marble is handled (lifted
     15 mm above where it started, or taken out over the rim)."""
     value, why = outcome(objects)
-    if why.split(" is ")[0] != _LAST["why"]:
-        _LAST["why"] = why.split(" is ")[0]
+    if (value, why.split(" is ")[0]) != _LAST["why"]:
+        _LAST["why"] = (value, why.split(" is ")[0])
         print(f"[task] {value}: {why}", flush=True)
     return value
 
