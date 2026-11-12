@@ -1,0 +1,13 @@
+{
+  "title": "Fix a matchstick equation by moving one stick",
+  "category": "Societal relevance",
+  "keywords": ["puzzle", "matchstick", "arithmetic", "symbolic reasoning", "counterfactual reasoning", "pick and place"],
+  "instruction": "Make the equation mathematically correct by moving exactly one matchstick.",
+  "context": "Matchstick puzzles test arithmetic and symbol manipulation through a physical change: the robot must imagine what each stick's move would turn the digits into, find the one move that makes the equation true, and carry it out without disturbing the rest. Here the fix changes two digits at once, and the stick must be turned a quarter turn on the way.",
+  "setup": "Positions in cm from the midpoint between the two arm bases, on the table (x forward, y left). A black felt mat (17 x 36 x 0.3 cm) is taped to the table centred at x 29, y 0. On it, 18 loose wooden sticks (4 x 0.8 x 0.8 cm, 3.5 g, natural wood) spell 9 - 6 = 7 in seven-segment digits, read left to right from the robot's side with the tops of the digits away from the robot. Each digit is 5.2 cm wide and 10.4 cm tall between segment centres, its sticks 2 mm apart at the corners; the symbols' centres are at y 13.5 (9), 7 (minus: one stick across), 0 (6), -7 (equals: two sticks across, 2.2 cm apart) and -13.5 (7), all on the line x 29. The 9 has all segments but the lower left; the 6 all but the upper right; the 7 is the top and both right segments. The exact place of every stick is in task.py (SLOTS) and in the setup screenshot.",
+  "scoring": "Measured at the end of the run with a top photo. Each stick counts as lying in a segment's place if its centre is within 1.2 cm of it, its length within 20 degrees of the segment's direction, and it lies on the mat (not held or on another stick). 1.0 if every stick lies in a place, the sticks spell a true equation and exactly one stick has moved (only 9 - 8 = 1 can be made this way: the 7's top stick moved to the 6's upper right), at rest for 1 s. 0.25 if only that stick moved but it does not lie in the 6's upper right. 0 otherwise (another stick moved, two or more moved, or nothing moved).",
+  "run_limit": "1,200 steps (1 minute at 20 Hz)",
+  "reset_notes": "Put the moved stick back on its mark; mark every stick's place on the mat (or keep a printed template under a clear mat).",
+  "fidelity": "Rigid boxes. The mat is fixed; all 18 sticks are loose (rubber-like friction 1.2, yam_arena's default). Real matchsticks are smaller (about 4.5 x 0.2 x 0.2 cm); these are jumbo craft sticks so a parallel gripper can hold them and the top camera can read them.",
+  "scores": "Dream-1 run: TBD; demo: TBD"
+}
