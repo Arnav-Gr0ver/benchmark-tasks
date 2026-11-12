@@ -9,5 +9,6 @@
   "run_limit": "1,200 steps (1 minute at 20 Hz)",
   "reset_notes": "Put the moved stick back on its mark; mark every stick's place on the mat (or keep a printed template under a clear mat).",
   "fidelity": "Rigid boxes. The mat is fixed; all 18 sticks are loose (rubber-like friction 1.2, yam_arena's default). Real matchsticks are smaller (about 4.5 x 0.2 x 0.2 cm); these are jumbo craft sticks so a parallel gripper can hold them and the top camera can read them.",
-  "scores": "Dream-1 run: TBD; demo: TBD"
+  "scores": "Dream-1 run: 0.0; demo: 1.0",
+  "media": "M-JSAXVC"
 }
