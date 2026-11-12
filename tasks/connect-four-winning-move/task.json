@@ -1,18 +1,19 @@
 {
-  "title": "Drop the winning disc in Connect Four",
-  "category": "Societal relevance",
-  "keywords": [
-    "game",
-    "board state reasoning",
-    "insertion",
-    "connect four"
-  ],
-  "instruction": "You are playing red in Connect Four and it is your turn. Drop the spare red disc into the column that wins the game.",
-  "context": "Connect Four is a household game whose winning moves people spot at a glance, but here the win is a diagonal that needs the disc to land on top of the right stack, while red's eye-catching three-in-a-row along the bottom is already blocked and blue threatens to win elsewhere. The robot must read an upright board through its windows and drop a disc into a narrow slot 21 cm up, as a person would.",
-  "setup": "Positions in cm from the midpoint between the two arm bases, on the table (x forward, y left). An upright, standard-size yellow Connect Four frame (7 columns at 3.8 cm pitch, 6 rows, 27 cm wide, 20.6 cm tall including a 1.2 cm base) is taped to the table facing the robot, its slot's mid-plane at x 25, centred at y 0. Each column is 3.6 cm wide inside and the slot is 1.1 cm deep front to back; the front has 1 cm posts between columns so the discs show through 2.8 cm windows; the back is solid; along the top, front and back lips 1.2 cm wide slope out at 45 degrees, flaring each slot's mouth to 2.8 cm. Discs are 3.2 cm across (across the flats of a rim of 16 ridges, as on a real Connect Four disc), 7 mm thick, 6 g, red or blue. Columns numbered 1-7 from the robot's left, rows 1-6 from the bottom. In the frame: row 1, columns 1-7: blue, blue, empty, blue, red, red, red; row 2: column 4 red, column 5 blue, column 6 red, column 7 blue; column 4 also has blue in row 3 and red in row 4. A spare red disc stands on its edge, faces toward the robot, in a holder (two 4 x 20 x 8 mm walls, 1 mm off its faces) at x 20, y 24; a spare blue disc in the same kind of holder at x 20, y -24.",
-  "scoring": "Measured at the end of the run with a front photo. 0 if the blue spare disc is in the frame. Otherwise: 1.0 if the red spare disc rests in column 5, row 3 (on top of column 5's two discs: the diagonal win), still for 1 s; 0.25 if it rests in any other column (a legal move that does not win; the defensive block is column 3); 0 if it is not in the frame (on the table, on top of the frame, or still held).",
-  "run_limit": "1,200 steps (1 minute at 20 Hz)",
-  "reset_notes": "The twelve placed discs are glued in. Turn the frame upside down to shake out the dropped disc (it is the only loose one), set the frame back on its marks, and put the spare discs back in their holders.",
-  "fidelity": "Rigid bodies. The frame and the twelve discs already in it are fixed; only the two spare discs are loose (rubber-like friction, 1.2). A disc's ridged rim is modelled as 16 flat facets. The frame's dimensions follow a standard retail Connect Four; its slots' flared mouths are two straight 45-degree lips.",
-  "scores": "Dream-1 run: TBD; demo: TBD"
+    "title":  "Drop the winning disc in Connect Four",
+    "category":  "Societal relevance",
+    "keywords":  [
+                     "game",
+                     "board state reasoning",
+                     "insertion",
+                     "connect four"
+                 ],
+    "instruction":  "You are playing red in Connect Four and it is your turn. Drop the spare red disc into the column that wins the game.",
+    "context":  "Connect Four is a household game whose winning moves people spot at a glance, but here the win is a diagonal that needs the disc to land on top of the right stack, while red\u0027s eye-catching three-in-a-row along the bottom is already blocked and blue threatens to win elsewhere. The robot must read an upright board through its windows and drop a disc into a narrow slot 21 cm up, as a person would.",
+    "setup":  "Positions in cm from the midpoint between the two arm bases, on the table (x forward, y left). An upright, standard-size yellow Connect Four frame (7 columns at 3.8 cm pitch, 6 rows, 27 cm wide, 20.6 cm tall including a 1.2 cm base) is taped to the table facing the robot, its slot\u0027s mid-plane at x 25, centred at y 0. Each column is 3.6 cm wide inside and the slot is 1.1 cm deep front to back; the front has 1 cm posts between columns so the discs show through 2.8 cm windows; the back is solid; along the top, front and back lips 1.2 cm wide slope out at 45 degrees, flaring each slot\u0027s mouth to 2.8 cm. Discs are 3.2 cm across (across the flats of a rim of 16 ridges, as on a real Connect Four disc), 7 mm thick, 6 g, red or blue. Columns numbered 1-7 from the robot\u0027s left, rows 1-6 from the bottom. In the frame: row 1, columns 1-7: blue, blue, empty, blue, red, red, red; row 2: column 4 red, column 5 blue, column 6 red, column 7 blue; column 4 also has blue in row 3 and red in row 4. A spare red disc stands on its edge, faces toward the robot, in a holder (two 4 x 20 x 8 mm walls, 1 mm off its faces) at x 20, y 24; a spare blue disc in the same kind of holder at x 20, y -24.",
+    "scoring":  "Measured at the end of the run with a front photo. 0 if the blue spare disc is in the frame. Otherwise: 1.0 if the red spare disc rests in column 5, row 3 (on top of column 5\u0027s two discs: the diagonal win), still for 1 s; 0.25 if it rests in any other column (a legal move that does not win; the defensive block is column 3); 0 if it is not in the frame (on the table, on top of the frame, or still held).",
+    "run_limit":  "1,200 steps (1 minute at 20 Hz)",
+    "reset_notes":  "The twelve placed discs are glued in. Turn the frame upside down to shake out the dropped disc (it is the only loose one), set the frame back on its marks, and put the spare discs back in their holders.",
+    "fidelity":  "Rigid bodies. The frame and the twelve discs already in it are fixed; only the two spare discs are loose (rubber-like friction, 1.2). A disc\u0027s ridged rim is modelled as 16 flat facets. The frame\u0027s dimensions follow a standard retail Connect Four; its slots\u0027 flared mouths are two straight 45-degree lips.",
+    "scores":  "Dream-1 run: 0.0; demo: 1.0",
+    "media":  "M-RB9Q38"
 }
