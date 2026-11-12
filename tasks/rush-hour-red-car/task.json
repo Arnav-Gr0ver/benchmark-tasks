@@ -1,0 +1,13 @@
+{
+  "title": "Rush Hour: free the red car",
+  "category": "Societal relevance",
+  "keywords": ["puzzle", "rush hour", "spatial planning", "constrained motion", "sequencing", "sliding"],
+  "instruction": "Move the blocking vehicle, then slide the red car out of the exit.",
+  "context": "Rush Hour is a sliding-block puzzle: vehicles only slide along their own lanes, so freeing the red car means finding which vehicle blocks it and which way that vehicle can actually go. Here the blocker's obvious way, toward the robot, is shut by another car; it must slide two cells away instead, and nothing may be lifted over anything.",
+  "setup": "Positions in cm from the midpoint between the two arm bases, on the table (x forward, y left). A light grey Rush Hour board (6 x 6 cells of 3.4 cm, 20.4 cm square inside, on a 0.6 cm base, with 0.6 cm walls 1 cm tall) is taped to the table centred at x 30, y 0. The right-hand wall (toward the robot's right) has a 3.4 cm gap in the fourth row from the robot: the exit, leading onto a pink apron (4.4 x 10 cm, level with the board). Vehicles are smooth plastic blocks 2.8 cm wide and 1.6 cm tall, cars 6.4 cm long (25 g), trucks 9.8 cm long (40 g), each with a 1.2 cm square, 1.4 cm tall peg on the middle of its roof. Rows count from the robot's side, columns from its left. Red car: row 4, columns 3-4, lying along the row. Yellow car (the blocker): column 5, rows 3-4. Green car: row 2, columns 5-6. Purple car: column 2, rows 4-5. Teal car: column 6, rows 5-6. Blue truck: row 6, columns 1-3. Orange truck: column 1, rows 1-3. Exact positions in task.py (VEHICLES) and the setup screenshot.",
+  "scoring": "Watched through the run, scored at its end with a top photo. 0 if any vehicle was lifted more than 8 mm off the board at any time (it could have hopped another), or ends more than 8 mm off its lane's centre line or turned more than 15 degrees. Otherwise: 1.0 if the red car is out: its back end past the right wall's outer face, on the apron, at rest for 1 s. 0.5 if the yellow car has slid clear of the red car's row but the red car is not out. 0 otherwise.",
+  "run_limit": "1,200 steps (1 minute at 20 Hz)",
+  "reset_notes": "Slide the red car back to its cells and the yellow car back down; check every vehicle sits on its marks.",
+  "fidelity": "Rigid bodies. The board, walls and apron are fixed; the seven vehicles are free. Vehicles and board are slick (friction 0.2, smooth plastic), so vehicles slide when pushed. Real Rush Hour vehicles are about 2 cm wide on 2.3 cm cells; these are scaled up and given pegs so a parallel gripper can hold them without touching the neighbours.",
+  "scores": "Dream-1 run: TBD; demo: TBD"
+}
