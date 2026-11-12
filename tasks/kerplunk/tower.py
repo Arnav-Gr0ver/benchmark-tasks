@@ -104,9 +104,9 @@ def wall_crossings(name: str) -> list[tuple[float, float]]:
 
 
 N_WALL = 48
-BORE_CLEAR = 0.0004                                     # a drilled hole: 0.4 mm clear of the rod all round
-BORE_T, BORE_LEN = 0.0015, 0.005                        # modelled as a square sleeve, 1.5 mm walls, 5 mm long
-WINDOW = 0.003                                          # the wall's panels are cut back this much round each sleeve
+BORE_CLEAR = 0.001                                      # a drilled hole: 1 mm clear of the rod at either side
+BORE_T, BORE_LEN = 0.001, 0.003                         # modelled as a 1 mm sill and two 1 mm cheeks, 3 mm long
+WINDOW = 0.003                                          # the wall's panels are cut back this much round each hole
 
 
 def crossing_points(name: str) -> list[np.ndarray]:
@@ -116,22 +116,28 @@ def crossing_points(name: str) -> list[np.ndarray]:
 
 
 def bores() -> list[tuple[tuple, tuple]]:
-    """Each rod's two holes through the wall, as square sleeves of four boxes round the rod (below, above, either
-    side), 0.4 mm clear of it: (centre, size) in the tube's frame, axis-aligned. The rod rests on the bottom one."""
+    return [(c, size) for _, c, size in bores_by_rod()]
+
+
+def bores_by_rod() -> list[tuple[str, tuple, tuple]]:
+    """Each rod's two holes through the wall: a sill the rod rests on (its top exactly at the rod's underside) and a
+    cheek either side, 1 mm clear of it; open on top, as a loose hole is to a rod lying in it. (centre, size) in the
+    tube's frame, axis-aligned. Kept thin so no part of one rod's hole reaches another rod (the far and guard rods run
+    2.8 mm apart): see test_kerplunk.py."""
     out = []
-    inner = ROD_R + BORE_CLEAR
+    side = ROD_R + BORE_CLEAR
     for name in RODS:
         along_x = RODS[name][0] == "x"
         for c in crossing_points(name):
-            span = 2 * (inner + BORE_T)
-            for dz in (-1, 1):
-                size = (BORE_LEN, span, BORE_T) if along_x else (span, BORE_LEN, BORE_T)
-                out.append((tuple(c + np.array([0.0, 0.0, dz * (inner + BORE_T / 2)])), size))
+            span = 2 * (side + BORE_T)
+            sill = (BORE_LEN, span, BORE_T) if along_x else (span, BORE_LEN, BORE_T)
+            out.append((name, tuple(c + np.array([0.0, 0.0, -ROD_R - BORE_T / 2])), sill))
+            height = 2 * ROD_R + BORE_T
             for ds in (-1, 1):
-                shift = np.array([0.0, ds * (inner + BORE_T / 2), 0.0]) if along_x else \
-                    np.array([ds * (inner + BORE_T / 2), 0.0, 0.0])
-                size = (BORE_LEN, BORE_T, 2 * inner) if along_x else (BORE_T, BORE_LEN, 2 * inner)
-                out.append((tuple(c + shift), size))
+                shift = np.array([0.0, ds * (side + BORE_T / 2), 0.0]) if along_x else \
+                    np.array([ds * (side + BORE_T / 2), 0.0, 0.0])
+                size = (BORE_LEN, BORE_T, height) if along_x else (BORE_T, BORE_LEN, height)
+                out.append((name, tuple(c + shift + np.array([0.0, 0.0, -BORE_T / 2])), size))
     return out
 
 

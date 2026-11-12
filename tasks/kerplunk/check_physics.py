@@ -5,6 +5,7 @@ falling. World scaled x10 with gravity x10 (same timing), so PyBullet's contact 
 
     python check_physics.py          # the four removals
     python check_physics.py sweep    # the same under low, medium and high friction, two speeds, both directions
+    python check_physics.py demo     # the demo's grip, lift and pull on the blue rod, with the arm off by 1-2 mm
 """
 
 from __future__ import annotations
@@ -87,6 +88,44 @@ def pull(name, speed=0.05, sign=-1):
     return sorted(m for m, mb in marbles.items() if zpos(mb) < tower.FALLEN_Z)
 
 
+def demo_replay(err=(0.0, 0.0, 0.0)):
+    """The demo's motion on the blue rod: held 6.5 cm from its middle toward its pulled end, that point lifted 2 mm
+    (plus an arm error ``err``, m) and then drawn straight out. The marbles that fell, and how far out the rod got."""
+    import task_geometry as tg
+    rods, marbles = build()
+    settle(1.0)
+    b = rods[tower.SAFE]
+    pos0, q0 = p.getBasePositionAndOrientation(b)
+    d = -tower.rod_dir(tower.SAFE)
+    grip_along = tg.GRIP_ALONG                     # from the rod's middle to the grip, along d
+    grip0 = np.array(pos0) / S + d * grip_along
+    local = [0.0, 0.0, grip_along * S]            # the rod's own axis is its local z in PyBullet
+    hold = grip0 + np.array(err)
+    lifted = hold + np.array([0.0, 0.0, tg.LIFT_BIAS])
+    g = p.createConstraint(b, -1, -1, -1, p.JOINT_FIXED, [0, 0, 0], local, list(grip0 * S),
+                           childFrameOrientation=q0)
+    for a, b_, sec in ((grip0, hold, 0.3), (hold, lifted, 0.5), (lifted, lifted + d * tg.PULL, 5.0)):
+        n = int(sec / DT)
+        for k in range(1, n + 1):
+            p.changeConstraint(g, list((a + (b_ - a) * k / n) * S), maxForce=30 * S)
+            p.stepSimulation()
+    out = tower.extracted(tower.SAFE, np.array(p.getBasePositionAndOrientation(b)[0]) / S)
+    p.removeConstraint(g)
+    settle(1.5)
+    return sorted(m for m, mb in marbles.items() if zpos(mb) < tower.FALLEN_Z), out
+
+
+def demo_check():
+    p.connect(p.DIRECT)
+    ok = True
+    for err in ((0, 0, 0), (0, 0, -0.002), (0, 0, 0.002), (0.001, 0, 0), (-0.001, 0, 0), (0.001, 0, -0.002)):
+        fallen, out = demo_replay(tuple(err))
+        ok &= not fallen and out >= 1.0
+        print(f"demo with the arm off by {[round(1000 * v, 1) for v in err]} mm: rod {100 * out:.0f} % out, "
+              f"fallen {fallen or 'none'}")
+    print("OK" if ok else "FAIL")
+
+
 def sweep():
     p.connect(p.DIRECT)
     ok = True
@@ -104,8 +143,13 @@ def sweep():
 def main():
     if sys.argv[1:] == ["sweep"]:
         return sweep()
+    if sys.argv[1:] == ["demo"]:
+        return demo_check()
     p.connect(p.DIRECT)
     rods, marbles = build()
+    p.performCollisionDetection()
+    worst = min([c[8] for b in rods.values() for c in p.getContactPoints(b)] or [0.0]) / S
+    print(f"at the start, the deepest overlap of any rod with anything: {max(0.0, -1000 * worst):.2f} mm")
     start = {n: np.array(p.getBasePositionAndOrientation(b)[0]) / S for n, b in marbles.items()}
     settle(3.0)
     moved = max(np.linalg.norm(np.array(p.getBasePositionAndOrientation(b)[0]) / S - start[n])

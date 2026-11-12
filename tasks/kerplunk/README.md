@@ -15,7 +15,12 @@ Which rod is safe follows from the geometry, not from a rule in the scorer:
 
 `check_physics.py` builds the tower in PyBullet and pulls each rod straight out from a fresh start: orange drops 2
 marbles, blue none, green 2, yellow 1. `python check_physics.py sweep` repeats this at friction 0.2 to 0.7, at 5 and
-15 cm/s, pulling either way: the result is the same every time.
+15 cm/s, pulling either way: the result is the same every time. `python check_physics.py demo` replays the demo's
+grip, lift and pull with the arm up to 2 mm off: the blue rod comes fully out and no marble falls.
+
+The holes are loose (1 mm clear either side, open above the rod, as a loose round hole is to a rod lying in it), and
+`test_kerplunk.py` checks that no part of one rod's hole comes near another rod: the orange and blue rods run 2.8 mm
+apart, and a rod caught by its neighbour's hole jams when pulled.
 
 ```
                  far wall
@@ -38,6 +43,7 @@ marbles, blue none, green 2, yellow 1. `python check_physics.py sweep` repeats t
 |---|---|
 | `task.py` | The yam_arena task file: base, tube, rods, marbles, the fall watcher, `success()`, `score()` and the scripted `demo()` |
 | `tower.py` | The tower's geometry: rods, marbles, the wall with its holes, and how far a rod is out |
+| `task_geometry.py` | The demo's grip on the blue rod (where, how far it lifts and pulls), shared with the physics check |
 | `shapekit.py` | Rods (cylinders along x or y), marbles and the see-through tube for yam_arena task files |
 | `stepkit.py` | Runs the fall watcher after every control step |
 | `check_physics.py` | PyBullet check of all four removals (`pip install pybullet`) |
@@ -68,8 +74,9 @@ inspect-robots run --embodiment yam_arena --policy dream \
 The scripted demo is the same command with `--policy yam_scripted --max-steps 600`. The right arm closes round the blue
 rod's long end on the robot's right (the rods stick out unevenly, so it is clear of the orange rod beside it), with
 the fingertips 12 mm below the rod so the flat of the pads holds its middle (the fingers taper; a round rod held near
-their tips is squeezed out of them). It slides the rod straight out over 5 s until its far end is 3 cm past the wall,
-carries it clear and lays it on the table. About 14 s (280 steps).
+their tips is squeezed out of them), and lifts that end 2 mm off its hole's sill (pressed down into its holes, a rod
+drags; lifted, it slides free). It slides the rod straight out over 5 s until its far end is 3 cm past the wall,
+carries it clear and lays it on the table. About 14 s (290 steps).
 
 ## Scoring
 
@@ -92,12 +99,13 @@ About 2 to 3 minutes per Dream-1 trial on an L40S, plus about 1 minute for Isaac
 python -m pytest test_kerplunk.py -q
 python check_physics.py
 python check_physics.py sweep
+python check_physics.py demo
 ```
 
 ## Real-world build
 
 A clear acrylic tube, 100 mm outside, 94 mm inside, 160 mm long, glued to a 140 x 140 x 10 mm plywood base. Drill
-6.8 mm holes for the four rods where `tower.py` puts them (`crossing_points`): the orange and blue rods along y, the
+8 mm holes for the four rods where `tower.py` puts them (`crossing_points`): the orange and blue rods along y, the
 green and yellow along x, at 110, 117.4, 103.5 and 103.5 mm above the table. Cut 16 cm rods from 6 mm birch dowel,
 paint them orange, blue, green and yellow, push them through so they stick out as in `SHIFT`, and set the five 16 mm
 marbles against the wall on their ledges. To reset, lift the tube off the base to tip out fallen marbles.

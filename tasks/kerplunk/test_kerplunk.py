@@ -67,6 +67,30 @@ def test_crossing_rods_clear_each_other():
         assert d >= 2 * tower.ROD_R + 0.0004, (a, b, d)
 
 
+def _box_to_segment(centre, size, p0, p1, n=800):
+    c, h = np.asarray(centre), np.asarray(size) / 2
+    pts = p0 + np.linspace(0.0, 1.0, n)[:, None] * (p1 - p0)
+    return float(np.linalg.norm(np.maximum(np.abs(pts - c) - h, 0.0), axis=1).min())
+
+
+def test_no_hole_touches_another_rod_and_each_rod_rests_on_its_own_sills():
+    """A rod caught by a neighbour's hole jams when pulled (the far and guard rods run 2.8 mm apart)."""
+    for name in tower.RODS:
+        c, d = tower.rod_centre(name), tower.rod_dir(name)
+        p0, p1 = c - d * tower.ROD_LEN / 2, c + d * tower.ROD_LEN / 2
+        for owner, centre, size in tower.bores_by_rod():
+            gap = _box_to_segment(centre, size, p0, p1) - tower.ROD_R
+            if owner == name:
+                assert gap > -1e-9, (name, centre)                          # its own: resting on, never into
+            else:
+                assert gap > 0.0003, (name, owner, centre, gap)              # anyone else's: clear
+        for c_w, size, rot in tower.wall_boxes():                            # and the wall's panels: clear
+            a = math.radians(rot[2])
+            r = np.array([[math.cos(a), -math.sin(a), 0], [math.sin(a), math.cos(a), 0], [0, 0, 1]])
+            q0, q1 = (r.T @ (p0 - np.asarray(c_w))), (r.T @ (p1 - np.asarray(c_w)))
+            assert _box_to_segment((0, 0, 0), size, q0, q1) - tower.ROD_R > 0.0003, (name, c_w)
+
+
 def test_extracted_reads_in_place_half_and_out():
     for name in tower.RODS:
         c = tower.rod_centre(name)
