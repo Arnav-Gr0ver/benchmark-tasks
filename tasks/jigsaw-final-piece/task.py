@@ -34,7 +34,8 @@ INSTRUCTION = "Complete the jigsaw puzzle by choosing and inserting the correct 
 
 DATA = json.loads((HERE / "pieces.json").read_text())
 CELL = DATA["cell"]                      # 44 mm
-THICK = 0.006                            # 6 mm plywood
+THICK = DATA["thick"]                    # 6 mm plywood
+EDGE = DATA["edge"]                      # every piece's top edge is chamfered 2 mm (a routed edge)
 HOLE_CELL = tuple(DATA["hole"])          # (row from the robot's side, column from the robot's right), 0-based
 CORRECT = DATA["correct"]
 
@@ -67,9 +68,9 @@ def _piece(name, rec, pos, *, yaw=0.0, mass=None, knob=None):
     ys = [p[1] for p in rec["outline"]]
     size = (max(xs) - min(xs), max(ys) - min(ys), THICK + (knob[1] if knob else 0.0))
     common = dict(pos=pos, yaw=yaw, mass=mass, size=size, color=PLYWOOD, thick=THICK, decals=decals, knob=knob)
-    if mass is None:  # glued down: one exact collider
-        return Piece(name, outline=_tuples(rec["outline"]), triangles=tuple(_tuples(t) for t in rec["triangles"]),
-                     **common)
+    if mass is None:  # glued down: one exact collider, its top edge chamfered
+        mesh = rec["mesh"]
+        return Piece(name, mesh_points=_tuples(mesh["points"]), mesh_triangles=_tuples(mesh["triangles"]), **common)
     bottoms = tuple(None if b is None else _tuples(b) for b in rec["bottoms"])
     return Piece(name, parts=tuple(_tuples(p) for p in rec["parts"]), bottoms=bottoms, chamfer=BEVEL_UP, **common)
 
@@ -149,42 +150,50 @@ def score(objects) -> float:
 PAD_TIP = 0.013                          # the fingertips, below the TCP
 KNOB_GRIP = 0.002                        # fingertips this far above the piece's top face while holding the peg
 PICK_Z = TOP + 0.0005 + THICK + KNOB_GRIP + PAD_TIP
-DROP_Z = BASE_TOP + THICK + 0.0015 + THICK + KNOB_GRIP + PAD_TIP   # the piece's underside 1.5 mm above the board
+DROP_GAP = 0.003                         # the piece's underside this far above the board's top when let go
+DROP_Z = BASE_TOP + THICK + DROP_GAP + THICK + KNOB_GRIP + PAD_TIP
 PRESS_Z = BASE_TOP + THICK + KNOB[1] + PAD_TIP   # closed fingertips on the peg's top, the piece seated
 TRAVEL_Z = TOP + 0.10
+SQUARE = 0.45 * FINGER_OPEN              # open between the two squaring grips: 21 mm a side, clear of the peg
 RELEASE = 0.45 * FINGER_OPEN
 DEMO_ARM = "right"
 
 
 def grip_yaws():
-    """(at the pick, at the hole) in radians: the fingers square to the peg, turned with the piece (125 degrees at
-    the pick, 0 at the hole: the wrist turns 125 degrees on the way, within its 120-degree-each-way range)."""
+    """(first grip, second grip and carry, at the hole) in radians. The fingers close on the peg twice, a quarter
+    turn apart (35 then 125 degrees, both square to the peg, which lies turned 125 degrees): each grip slides the piece
+    so the peg is centred between the fingers along one direction, so after both it is centred both ways. Then the
+    wrist turns 125 degrees to 0 on the way to the hole (within its 120-degree-each-way range)."""
     _, deg = START[CORRECT]
-    return math.radians(deg), 0.0
+    return math.radians(deg - 90.0), math.radians(deg), 0.0
 
 
 def demo():
-    """The right arm takes the missing piece by its peg, lifts it, turns it the way it fits while carrying it over
-    the hole, lowers it until it is just above the board and lets go (it drops into the hole, its bevel taking up a
-    few millimetres of misplacement), then presses its peg down twice with closed fingers."""
+    """The right arm squares the missing piece up under its fingers by gripping its peg twice, a quarter turn apart;
+    lifts it, turns it the way it fits while carrying it over the hole, lowers it until it is just above the board,
+    holds still, lets go (it drops into the hole: the board's chamfered edges and its own bevelled bottom edge make a
+    funnel that takes up several millimetres of misplacement), then presses its peg down twice with closed fingers."""
     f0, f1 = FINGER_OPEN, FINGER_CLOSED
     (px, py), _ = START[CORRECT]
     hx, hy = HOLE_XY
-    g0, g1 = grip_yaws()
+    g_a, g_b, g_hole = grip_yaws()
     return {DEMO_ARM: [
-        Waypoint(2.0, (px, py, TRAVEL_Z), f0, "above the piece", g0),
-        Waypoint(1.5, (px, py, PICK_Z), f0, "down to the peg", g0),
-        Waypoint(0.8, (px, py, PICK_Z), f1, "grip", g0),
-        Waypoint(1.2, (px, py, TRAVEL_Z), f1, "lift", g0),
-        Waypoint(3.0, (hx, hy, TRAVEL_Z), f1, "over the hole, turning", g1),
-        Waypoint(1.5, (hx, hy, DROP_Z + 0.01), f1, "down", g1),
-        Waypoint(1.0, (hx, hy, DROP_Z), f1, "just above the board", g1),
-        Waypoint(0.5, (hx, hy, DROP_Z), f1, "steady", g1),
-        Waypoint(0.5, (hx, hy, DROP_Z), RELEASE, "let go", g1),
-        Waypoint(0.6, (hx, hy, PRESS_Z + 0.012), RELEASE, "up", g1),
-        Waypoint(0.4, (hx, hy, PRESS_Z + 0.012), f1, "close", g1),
-        Waypoint(1.0, (hx, hy, PRESS_Z - 0.002), f1, "press the peg", g1),
-        Waypoint(0.5, (hx, hy, PRESS_Z + 0.004), f1, "ease off", g1),
-        Waypoint(0.8, (hx, hy, PRESS_Z - 0.002), f1, "press again", g1),
-        Waypoint(1.0, (hx, hy, TRAVEL_Z), f1, "up", g1),
+        Waypoint(2.0, (px, py, TRAVEL_Z), f0, "above the piece", g_a),
+        Waypoint(1.5, (px, py, PICK_Z), f0, "down to the peg", g_a),
+        Waypoint(0.6, (px, py, PICK_Z), f1, "square up one way", g_a),
+        Waypoint(0.4, (px, py, PICK_Z), SQUARE, "open", g_a),
+        Waypoint(0.8, (px, py, PICK_Z), SQUARE, "turn a quarter turn", g_b),
+        Waypoint(0.6, (px, py, PICK_Z), f1, "grip, squared up both ways", g_b),
+        Waypoint(1.2, (px, py, TRAVEL_Z), f1, "lift", g_b),
+        Waypoint(3.0, (hx, hy, TRAVEL_Z), f1, "over the hole, turning", g_hole),
+        Waypoint(1.5, (hx, hy, DROP_Z + 0.01), f1, "down", g_hole),
+        Waypoint(1.0, (hx, hy, DROP_Z), f1, "just above the board", g_hole),
+        Waypoint(1.0, (hx, hy, DROP_Z), f1, "hold still", g_hole),
+        Waypoint(0.5, (hx, hy, DROP_Z), RELEASE, "let go", g_hole),
+        Waypoint(0.6, (hx, hy, PRESS_Z + 0.012), RELEASE, "up", g_hole),
+        Waypoint(0.4, (hx, hy, PRESS_Z + 0.012), f1, "close", g_hole),
+        Waypoint(1.0, (hx, hy, PRESS_Z - 0.002), f1, "press the peg", g_hole),
+        Waypoint(0.5, (hx, hy, PRESS_Z + 0.004), f1, "ease off", g_hole),
+        Waypoint(0.8, (hx, hy, PRESS_Z - 0.002), f1, "press again", g_hole),
+        Waypoint(1.0, (hx, hy, TRAVEL_Z), f1, "up", g_hole),
     ]}

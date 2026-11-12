@@ -3,6 +3,7 @@ python -m pytest test_jigsaw.py -q"""
 
 from __future__ import annotations
 
+import collections
 import itertools
 import math
 import pathlib
@@ -15,7 +16,7 @@ HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 task_file = pytest.importorskip("yam_arena.task_file")
 import task  # noqa: E402
-from puzzlekit import BodyState, prism_mesh, solid_mesh  # noqa: E402
+from puzzlekit import BodyState, prism_mesh  # noqa: E402
 
 DECOYS = [n for n in task.START if n != task.CORRECT]
 
@@ -44,7 +45,7 @@ def test_only_the_missing_piece_fits_and_only_one_way_round():
             p = shapely.Polygon([(x + hx, y + hy) for x, y in _rot(task.DATA["candidates"][name]["outline"], deg)])
             overlap = p.intersection(board).area * 1e6           # mm^2
             fits = name in (task.CORRECT, "piece_b") and deg == 0
-            if fits:
+            if fits:   # (the glued pieces' chamfered tops only add room)
                 assert overlap == 0.0 and p.distance(board) >= 0.0015, (name, deg)   # 1.6 mm clear all round
             else:
                 assert overlap > 20.0, (name, deg, overlap)       # blocked by a neighbour's tab or body
@@ -62,13 +63,13 @@ def _colour_at(rec, x, y):
 
 
 def _agreement(name, deg):
-    """How much of the picture near the hole's edge (2 to 6 mm in from the cell's sides) a piece, turned ``deg``
+    """How much of the picture near the hole's edge (3 to 8 mm in from the cell's sides) a piece, turned ``deg``
     and set in the hole, shows the same as the missing piece does: the picture the neighbours continue."""
     truth, rec = task.DATA["candidates"][task.CORRECT], task.DATA["candidates"][name]
     h = task.CELL / 2
     same = total = 0
-    for x, y in itertools.product(np.arange(-h + 0.002, h - 0.002, 0.0015), repeat=2):
-        if max(abs(x), abs(y)) < h - 0.006:
+    for x, y in itertools.product(np.arange(-h + 0.003, h - 0.003, 0.0015), repeat=2):
+        if max(abs(x), abs(y)) < h - 0.008:
             continue
         want = _colour_at(truth, x, y)
         (bx, by), = _rot([(x, y)], -deg)
@@ -108,18 +109,22 @@ def test_prism_meshes_are_closed_and_bevelled():
         assert zs == ([0.0, task.BEVEL_UP, task.THICK] if bottom else [task.BEVEL_UP, task.THICK])
 
 
-def test_glued_pieces_are_closed_meshes_facing_out():
-    for rec in task.DATA["placed"].values():
-        pts, counts, idx = solid_mesh(rec["outline"], rec["triangles"], 0.0, task.THICK)
-        assert sum(counts) == len(idx) and max(idx) == len(pts) - 1
-        area = 0.0
-        for (ax, ay), (bx, by), (cx, cy) in rec["triangles"]:
-            cross = (bx - ax) * (cy - ay) - (by - ay) * (cx - ax)
-            assert cross > 0                                           # top faces up
-            area += cross / 2
+def test_glued_pieces_are_closed_meshes_facing_out_with_a_chamfered_top():
+    for name, rec in task.DATA["placed"].items():
+        pts = np.array(rec["mesh"]["points"])
+        tris = rec["mesh"]["triangles"]
+        edges = collections.Counter()
+        volume = 0.0
+        for a, b, c in tris:
+            for e in ((a, b), (b, c), (c, a)):
+                edges[e] += 1
+            volume += np.dot(pts[a], np.cross(pts[b], pts[c])) / 6.0
+        assert all(n == 1 and edges[(j, i)] == 1 for (i, j), n in edges.items()), name   # closed, consistently wound
         xs, ys = zip(*rec["outline"])
-        shoelace = 0.5 * sum(x0 * y1 - x1 * y0 for x0, y0, x1, y1 in zip(xs, ys, xs[1:] + xs[:1], ys[1:] + ys[:1]))
-        assert shoelace > 0 and math.isclose(area, shoelace, rel_tol=1e-3)  # outline counterclockwise, fully covered
+        area = 0.5 * sum(x0 * y1 - x1 * y0 for x0, y0, x1, y1 in zip(xs, ys, xs[1:] + xs[:1], ys[1:] + ys[:1]))
+        # outward-facing: the volume is positive, a plate of the outline's area less a chamfer along its edge
+        assert area * (task.THICK - task.EDGE) < volume < area * task.THICK, name
+        assert math.isclose(pts[:, 2].max(), task.THICK) and math.isclose(pts[:, 2].min(), 0.0)
 
 
 def _state(pos, yaw_deg=0.0, tilt_deg=0.0):
@@ -169,7 +174,7 @@ def test_loose_pieces_lie_apart_and_off_the_board():
 
 def test_the_piece_is_let_go_just_above_the_board_and_the_fingers_stay_above_it():
     underside = task.DROP_Z - task.PAD_TIP - task.KNOB_GRIP - task.THICK
-    assert 0.0 < underside - (task.BASE_TOP + task.THICK) <= 0.002     # dropped from 1.5 mm above the neighbours
+    assert 0.0 < underside - (task.BASE_TOP + task.THICK) <= 0.004     # dropped from just above the neighbours
     assert task.PRESS_Z - 0.002 - task.PAD_TIP > task.BASE_TOP + task.THICK + 0.008   # pressing: tips stay above them
     assert task.PICK_Z - task.PAD_TIP > task.TOP + task.THICK + 0.001  # above the piece's top at the pick
 
@@ -182,3 +187,27 @@ def test_demo_is_reachable():
         for t in itertools.takewhile(lambda t: t < p.duration, itertools.count(0.0, 0.05)):
             p.action7(t)
         assert p.worst_ik_mm < 2.0 and p.worst_ik_deg < 3.0, (arm, p.worst_ik_mm, p.worst_ik_deg)
+
+
+def test_the_funnel_takes_up_several_millimetres():
+    lead_in = task.DATA["clearance"] + task.BEVEL_IN + task.EDGE
+    assert lead_in >= 0.0055
+    assert task.EDGE + task.BEVEL_UP < task.THICK                       # the two bevels meet before the piece bottoms
+
+
+def test_the_two_grips_are_square_to_the_peg():
+    _, deg = task.START[task.CORRECT]
+    for g in task.grip_yaws()[:2]:
+        assert math.isclose((math.degrees(g) - deg) % 90.0, 0.0, abs_tol=1e-9)
+
+
+def test_every_collision_part_is_strictly_convex():
+    """The physics engine collides with each part's convex hull: a part with a dent would fill it in and make the
+    piece fatter than its outline (it then cannot drop in)."""
+    shapely = pytest.importorskip("shapely")
+    for rec in task.DATA["candidates"].values():
+        for part in rec["parts"]:
+            poly = shapely.Polygon(part)
+            assert poly.convex_hull.area - poly.area < 5e-9, part        # under 0.005 mm^2
+        bevelled = [shapely.Polygon(b) for b in rec["bottoms"] if b]
+        assert all(b.convex_hull.area - b.area < 5e-8 for b in bevelled)   # hulls, rounded to 0.01 mm

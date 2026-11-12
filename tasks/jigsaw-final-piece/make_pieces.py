@@ -249,17 +249,37 @@ def _cross(o, a, b):
     return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
 
 
+def _clean(poly):
+    """Drop repeated and collinear corners (they would hide a dent from the convexity test)."""
+    out = []
+    for v in poly:
+        if not out or math.dist(v, out[-1]) > 1e-6:
+            out.append(v)
+    while len(out) > 1 and math.dist(out[0], out[-1]) <= 1e-6:
+        out.pop()
+    changed = True
+    while changed and len(out) > 3:
+        changed = False
+        for k in range(len(out)):
+            a, b, c = out[k - 1], out[k], out[(k + 1) % len(out)]
+            if abs(_cross(a, b, c)) <= 1e-9:
+                del out[k]
+                changed = True
+                break
+    return out
+
+
 def _convex(poly):
+    poly = _clean(poly)
     n = len(poly)
-    return all(_cross(poly[k], poly[(k + 1) % n], poly[(k + 2) % n]) >= -1e-9 for k in range(n))
+    return n >= 3 and all(_cross(poly[k], poly[(k + 1) % n], poly[(k + 2) % n]) > 1e-9 for k in range(n))
 
 
 def convex_parts(outline: Polygon):
-    """Hertel-Mehlhorn: ear-clip, then merge neighbouring pieces while the result stays convex."""
-    parts = [list(t) for t in triangulate(outline)]
-    for p in parts:
-        if _cross(*p[:3]) < 0:
-            p.reverse()
+    """Hertel-Mehlhorn: ear-clip, then merge neighbouring pieces while the result stays strictly convex. Every part
+    is checked against its own convex hull, since the physics engine collides with the hull."""
+    parts = [_clean(list(t)) for t in triangulate(outline)]
+    parts = [p if _cross(*p[:3]) > 0 else p[::-1] for p in parts if len(p) == 3 and abs(_cross(*p)) > 1e-9]
     merged = True
     while merged:
         merged = False
@@ -271,17 +291,19 @@ def convex_parts(outline: Polygon):
                 if not shared:
                     continue
                 i, k = shared[0]
-                # pa: ... pa[i] -> pa[i+1] ...; pb: ... pb[k] = pa[i+1] -> pb[k+1] = pa[i] ...
                 rest_a = pa[i + 1:] + pa[:i + 1]          # starts at pa[i+1], ends at pa[i]
-                rest_b = pb[k + 2:] + pb[:k]              # pb after pa[i] up to before pa[i+1]
+                rest_b = pb[k + 2:] + pb[:k]              # pb after pa[i], up to before pa[i+1]
                 cand = rest_a + rest_b
                 if _convex(cand):
-                    parts[a] = cand
+                    parts[a] = _clean(cand)
                     del parts[b]
                     merged = True
                     break
             if merged:
                 break
+    for p in parts:
+        poly = Polygon(p)
+        assert _convex(p) and abs(poly.convex_hull.area - poly.area) < 1e-6, "a part is not convex"
     return parts
 
 
@@ -293,6 +315,10 @@ def r4(v):
     return round(float(v) / 1000.0, 5)  # mm -> m
 
 
+THICK = 6.0         # mm plywood
+EDGE = 2.0          # mm: every piece's top edge is chamfered this much in and down (a routed edge), and the
+#                     picture is printed on the flat top inside it. Around the hole the glued pieces' chamfers and
+#                     the loose piece's bevel below make a funnel.
 CHAMFER = 2.0       # mm in from the edge, and
 CHAMFER_H = 2.5     # mm up: a loose piece's bottom edge is bevelled, so a piece let go a few millimetres off its hole
 #                     lands on the bevel and slides in instead of resting on a neighbour's edge
@@ -307,13 +333,48 @@ def bottom_of(part, outline):
     return list(orient(p.convex_hull, 1.0).exterior.coords)[:-1]
 
 
+def solid_mesh(outline: Polygon):
+    """A glued piece as one closed triangle mesh (points in mm, triangles facing out): flat bottom, straight sides up
+    to THICK - EDGE, a chamfer in to the flat top, inset EDGE."""
+    inner = orient(outline.buffer(-EDGE, join_style="mitre"), 1.0)
+    outer_xy = list(outline.exterior.coords)[:-1]
+    inner_xy = list(inner.exterior.coords)[:-1]
+    n = len(outer_xy)
+    zs = THICK - EDGE
+    pts = [(x, y, 0.0) for x, y in outer_xy] + [(x, y, zs) for x, y in outer_xy] + [(x, y, THICK) for x, y in inner_xy]
+    index = {(round(x, 9), round(y, 9), z): k for k, (x, y, z) in enumerate(pts)}
+    tris = []
+
+    def up(t):  # counterclockwise seen from above
+        a, b, c = (pts[k] for k in t)
+        return t if _cross(a, b, c) > 0 else (t[0], t[2], t[1])
+
+    for t in triangulate(outline):                                   # bottom, facing down
+        a, b, c = (index[(round(x, 9), round(y, 9), 0.0)] for x, y in t)
+        tris.append(tuple(reversed(up((a, b, c)))))
+    for k in range(n):                                               # sides
+        j = (k + 1) % n
+        tris += [(k, j, n + j), (k, n + j, n + k)]
+    ring = Polygon(outer_xy, [inner_xy])                             # the chamfer
+    for t in triangulate(ring):
+        ids = []
+        for x, y in t:
+            key = (round(x, 9), round(y, 9))
+            ids.append(index.get((*key, zs), index.get((*key, THICK))))
+        tris.append(up(tuple(ids)))
+    for t in triangulate(inner):                                     # top
+        tris.append(up(tuple(index[(round(x, 9), round(y, 9), THICK)] for x, y in t)))
+    return pts, tris
+
+
 def piece_record(outline: Polygon, regions, centre, chamfer=False, solid=False):
     """What task.py needs: the outline, its convex parts and the printed picture's triangles, in metres in the
     piece's own frame (origin at its cell's centre)."""
     loc = local(outline, centre)
     decals = []
+    printed = outline.buffer(-EDGE, join_style="mitre")
     for colour, g in regions:
-        part = g.intersection(outline)
+        part = g.intersection(printed)
         tris = []
         for p in polygons(part):
             if p.area < 0.2:
@@ -328,9 +389,9 @@ def piece_record(outline: Polygon, regions, centre, chamfer=False, solid=False):
         "parts": [[[r4(a), r4(b)] for a, b in p] for p in parts],
         "decals": decals,
     }
-    if solid:  # a glued piece is one exact (triangle-mesh) collider: its top's triangles
-        tris = [t if _cross(*t) > 0 else t[::-1] for t in triangulate(loc)]   # counterclockwise seen from above
-        rec["triangles"] = [[[r4(a), r4(b)] for a, b in t] for t in tris]
+    if solid:  # a glued piece is one exact triangle-mesh collider
+        pts, tris = solid_mesh(loc)
+        rec["mesh"] = {"points": [[r4(x), r4(y), r4(z)] for x, y, z in pts], "triangles": [list(t) for t in tris]}
     if chamfer:
         rec["bottoms"] = [None if b is None else [[r4(x), r4(y)] for x, y in b]
                           for b in (bottom_of(p, loc) for p in parts)]
@@ -340,6 +401,7 @@ def piece_record(outline: Polygon, regions, centre, chamfer=False, solid=False):
 def build():
     board = picture()
     out = {"cell": CELL / 1000, "clearance": CLEARANCE / 1000, "bevel": [CHAMFER / 1000, CHAMFER_H / 1000],
+           "thick": THICK / 1000, "edge": EDGE / 1000,
            "hole": list(HOLE), "placed": {}, "candidates": {}, "correct": CORRECT}
     for c in cells():
         if c == HOLE:

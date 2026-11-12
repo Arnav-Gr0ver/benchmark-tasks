@@ -22,6 +22,11 @@ Checked offline (`test_jigsaw.py`): `piece_c` and `piece_b` fit the hole at 1.6 
 piece and turn overlaps a neighbour by at least 20 mm²; only `piece_a` and `piece_c` unturned show the picture the
 neighbours continue, every other piece and turn differs along at least a quarter of the hole's edge.
 
+Checked with physics (`check_physics.py`, PyBullet): dropped into the hole and pressed, only `piece_c` and `piece_b`
+unturned seat; every other piece and turn stays out, 3 to 6 mm up. Let go up to 4 mm off the hole's centre, `piece_c`
+seats every time (16 of 16 at each offset; 15 of 16 at 5 mm): the glued pieces' top edges are chamfered 2 mm and the
+loose pieces' bottom edges bevelled 2 mm, so the hole works as a funnel.
+
 ## Files
 
 | File | What |
@@ -31,6 +36,7 @@ neighbours continue, every other piece and turn differs along at least a quarter
 | `pieces.json` | Every piece's outline, convex parts and picture (made by `make_pieces.py`) |
 | `make_pieces.py` | Draws the pieces and the picture; writes `pieces.json` and `print_and_cut.svg` |
 | `print_and_cut.svg` | The real build: the picture with every cut line, 1 unit = 1 mm |
+| `check_physics.py` | Drops the pieces into the hole in PyBullet: which seat, and from how far off (`pip install pybullet`) |
 | `run.sh` | Runs a trial and writes its videos to your home folder (see below) |
 | `test_jigsaw.py` | Offline checks: which pieces fit and which pictures continue the board, the scorer, the demo's reach |
 
@@ -56,10 +62,11 @@ inspect-robots run --embodiment yam_arena --policy dream \
   --scorer task_score --max-steps 1200 --store-frames --log-dir ~/yam-eval/jigsaw-dream
 ```
 
-The scripted demo is the same command with `--policy yam_scripted --max-steps 600`. The right arm takes `piece_c`
-by its peg, lifts it, turns it 125 degrees while carrying it over the hole, lowers it until it is just above the
-board and lets go: it drops into the hole, its bevelled bottom edge taking up a few millimetres of misplacement. Then
-the arm presses the peg down twice with closed fingers. About 17 s (340 steps).
+The scripted demo is the same command with `--policy yam_scripted --max-steps 600`. The right arm grips `piece_c`'s
+peg twice, a quarter turn apart, so the peg ends up centred between the fingers both ways; lifts it, turns it 125
+degrees while carrying it over the hole, lowers it until it is 3 mm above the board, holds still, and lets go: it drops
+into the hole, the funnel taking up a few millimetres of misplacement. Then the arm presses the peg down twice with
+closed fingers. About 20 s (400 steps).
 
 ## Scoring
 
@@ -80,13 +87,16 @@ About 1 minute per trial on an L40S, plus about 1 minute for Isaac Sim to start.
 
 ```bash
 python -m pytest test_jigsaw.py -q
+python check_physics.py          # every piece at every quarter turn: which seat
+python check_physics.py offsets  # the missing piece let go 2 to 6 mm off the hole's centre
 ```
 
 ## Real-world build
 
 Print `print_and_cut.svg` at 100% on sticker paper, stick it on 6 mm birch plywood and laser-cut the red lines. Each
-piece is cut on its own outline, so neighbours end up 1.6 mm apart; the strips between them are scrap. Bevel
-the bottom edge of the four loose pieces (2 mm in over 2.5 mm up, a chamfer bit or sandpaper). Glue the 15 board pieces onto a 200 x 200 x 4 mm
+piece is cut on its own outline, so neighbours end up 1.6 mm apart; the strips between them are scrap. Chamfer
+the top edges of the 15 board pieces 2 mm (a 45-degree router bit), and bevel the bottom edge of the four loose pieces
+(2 mm in over 2.5 mm up). Glue the 15 board pieces onto a 200 x 200 x 4 mm
 dark-painted MDF base in their places; the board piece marked as `piece_c` is the missing piece. Cut `piece_a`,
 `piece_b` and `piece_d` from the second column of the sheet. Glue a 12 x 12 x 14 mm pine peg at the centre of each
 loose piece (its cell's centre: the middle of the 44 mm square the tabs grow from). Tape the base to the table and
