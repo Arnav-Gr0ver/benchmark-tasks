@@ -65,9 +65,11 @@ inspect-robots run --embodiment yam_arena --policy dream \
   --scorer task_score --max-steps 2400 --store-frames --log-dir ~/yam-eval/kerplunk-dream
 ```
 
-The scripted demo is the same command with `--policy yam_scripted --max-steps 600`. The right arm takes the blue rod by
-its long end on the robot's right (the rods stick out unevenly, so it is clear of the orange rod beside it), slides it
-straight out over 5 s, carries it clear and lays it on the table. About 13 s (270 steps).
+The scripted demo is the same command with `--policy yam_scripted --max-steps 600`. The right arm closes round the blue
+rod's long end on the robot's right (the rods stick out unevenly, so it is clear of the orange rod beside it), with
+the fingertips 12 mm below the rod so the flat of the pads holds its middle (the fingers taper; a round rod held near
+their tips is squeezed out of them). It slides the rod straight out over 5 s until its far end is 3 cm past the wall,
+carries it clear and lays it on the table. About 14 s (280 steps).
 
 ## Scoring
 

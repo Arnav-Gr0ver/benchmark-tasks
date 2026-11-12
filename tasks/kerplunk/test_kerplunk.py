@@ -131,7 +131,12 @@ def test_demo_pulls_the_blue_rod_fully_out_and_is_reachable():
     station = pytest.importorskip("yam_arena.station")
     assert tower.extracted(tower.SAFE, tower.rod_centre(tower.SAFE) - tower.rod_dir(tower.SAFE) * task.PULL) > 1.0
     far_end = task.world(tower.rod_centre("far") - tower.rod_dir("far") * tower.ROD_LEN / 2)
-    assert task.GRIP_Y - 0.010 - far_end[1] < -0.01                           # the fingers clear the orange rod's end
+    assert task.GRIP_Y - 0.010 - far_end[1] < -0.01                           # fingers clear of the orange rod's end
+    rod_z = task.world(tower.rod_centre(tower.SAFE))[2]
+    tips = task.GRIP[2] - task.PAD_TIP
+    assert rod_z - tips >= 0.010                                              # the flat of the pads on the rod
+    assert tips > task.TOP + 0.05                                             # nothing under the rod's end there
+    assert task.world(tower.rod_centre(tower.SAFE))[1] - tower.ROD_LEN / 2 < task.GRIP_Y - 0.010
     for arm, waypoints in task.demo().items():
         p = demo.ArmPlan(waypoints, station.BASES[arm])
         for t in itertools.takewhile(lambda t: t < p.duration, itertools.count(0.0, 0.05)):

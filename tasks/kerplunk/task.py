@@ -145,22 +145,27 @@ PAD_TIP = 0.013
 ALONG_X = math.pi / 2                   # grip yaw: the fingers close along x, across a rod that runs along y
 _g = world(tower.rod_centre(tower.SAFE))
 GRIP_Y = _g[1] - tower.ROD_LEN / 2 + 0.015          # 1.5 cm in from the blue rod's long end, on the robot's right
-GRIP = (_g[0], GRIP_Y, _g[2] - 0.002 + PAD_TIP)       # fingertips 2 mm below the rod's centre line
+# WHY deep: the fingers taper to their tips, so a round rod held near the tips is squeezed down and out of them. With
+# the tips 12 mm below the rod (nothing is under its end out here), the flat of the pads closes on its middle.
+TIPS_BELOW = 0.012
+GRIP = (_g[0], GRIP_Y, _g[2] - TIPS_BELOW + PAD_TIP)
 _chord = math.sqrt(tower.R_OUT ** 2 - tower.RODS[tower.SAFE][1] ** 2) + 0.0025   # to the outside of its hole
-PULL = tower.SHIFT[tower.SAFE] + tower.ROD_LEN / 2 + _chord + 0.012          # its far end 1.2 cm past the wall
+PULL = tower.SHIFT[tower.SAFE] + tower.ROD_LEN / 2 + _chord + 0.03           # its far end 3 cm past the wall
 DROP_Z = TOP + 0.03
 
 
 def demo():
-    """The right arm takes the blue rod by its long end on the robot's right, slides it straight out (to its right)
-    over 5 s, carries it clear of the tower and lays it on the table."""
+    """The right arm closes round the blue rod's long end on the robot's right (the fingertips 12 mm below it), slides
+    it straight out (to its right) over 5 s until its far end is 3 cm past the wall, carries it clear of the tower and
+    lays it on the table."""
     a, c = 0.30 * FINGER_OPEN, FINGER_CLOSED
     x, y, z = GRIP
     out = (x, y - PULL, z)
     return {"right": [
         Waypoint(2.0, (x, y, z + 0.05), a, "above the blue rod's end", ALONG_X),
-        Waypoint(1.5, (x, y, z), a, "down to it", ALONG_X),
+        Waypoint(1.5, (x, y, z), a, "down round it", ALONG_X),
         Waypoint(0.8, (x, y, z), c, "grip", ALONG_X),
+        Waypoint(0.5, (x, y, z), c, "hold", ALONG_X),
         Waypoint(5.0, out, c, "slide it straight out", ALONG_X),
         Waypoint(1.0, (x, y - PULL - 0.03, z), c, "clear of the tower", ALONG_X),
         Waypoint(1.5, (x, y - PULL - 0.03, DROP_Z), c, "down", ALONG_X),
