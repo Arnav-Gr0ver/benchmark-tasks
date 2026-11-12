@@ -15,5 +15,6 @@
   "run_limit": "3,600 steps (3 minutes at 20 Hz)",
   "reset_notes": "Lay the sticks back on a printed placement template in order: red, yellow, black, green, then blue across the middle of the three.",
   "fidelity": "Rigid boxes, all five sticks free (friction 0.5, wood on wood); the mat is fixed. Real pick-up sticks are round; these are square so they lie still in a fixed layout. Checked in PyBullet (check_physics.py) with stand-in fingers: blue first, then red, moves the protected sticks under 0.1 mm; lifting red first drops blue onto them (97 mm).",
-  "scores": "Dream-1 run: TBD; demo: TBD"
+  "scores": "Dream-1 run: 0.0; demo: 1.0",
+  "media": "M-TMAHAM"
 }
