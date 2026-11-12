@@ -16,5 +16,6 @@
   "run_limit": "1,200 steps (1 minute at 20 Hz)",
   "reset_notes": "Lift the loose pieces by their pegs and lay each on its table mark at its starting turn (marks and turns in the setup screenshot).",
   "fidelity": "Rigid bodies. The base and the 15 glued pieces are fixed, each one exact triangle-mesh collider (outline, sides and chamfered top edge); the four loose pieces are free (friction 0.6), each split into strictly convex prisms along its exact outline (a polygon with 20-segment circles), bevelled underneath (2 mm in over 2.5 mm up). With the board's chamfered edges this makes a funnel: checked in PyBullet (check_physics.py), the missing piece let go up to 4 mm off the hole's centre seats every time, and no wrong piece or wrong turn seats. The picture is a coloured print 0.2 mm thick on each piece's flat top, visual only.",
-  "scores": "Dream-1 run: TBD; demo: TBD"
+  "scores": "Dream-1 run: 0.0; demo: 1.0",
+  "media": "M-ANNXKR"
 }
