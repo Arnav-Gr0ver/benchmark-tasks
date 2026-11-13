@@ -1,0 +1,20 @@
+{
+  "title": "Remove a clipper's comb guard and put it in a tray",
+  "category": "Societal relatability",
+  "keywords": [
+    "hair clipper",
+    "comb guard",
+    "snap fit",
+    "retaining clip",
+    "detach",
+    "household"
+  ],
+  "instruction": "Remove the comb guard from the switched-off hair clipper and put the guard in the collection tray.",
+  "context": "People who cut hair or trim beards at home remove a clipper's comb guard when changing cutting lengths and exposing the blade area for cleaning. This task completes that familiar grooming preparation step: the fitted guard is removed and put aside while the clipper and its blade assembly remain intact. It evaluates handling the real attachment on an everyday personal-care tool.",
+  "setup": "Mat coordinates in mm: origin at the mat's centre (30 cm in front of the midpoint between the arm bases), x to the robot's right, y away from the robot, z up from the mat's top. A 600 x 400 x 2 mm silicone mat. A Wahl Elite Pro-type cordless clipper (300 g), switched off, no cable, lies loose on a broad face with its long axis along y and blade end toward +y, centred at x 0, y -80 (moved 80 mm toward the robot from the mat's centre for reach; frozen). Housing 160 long x 46 wide x 34 tall; the blade's teeth plate projects 8 mm past the housing's front at z 23 to 27. Its #4 (13 mm) comb guard is fully fitted, clip side up: the forward lip and hook are on the blade's tip and the rear metal clip is caught under the housing's catch. Guard: 79.5 long x 51 wide x 43 tall, 15 g with its clip. A loose polypropylene tray, inside floor 120 (x) x 100 (y), walls 15 tall and 2 thick, 60 g, floor centre at x +180, y -80. Nothing else. Arms start in the ready pose. Part sizes are estimates (see README).",
+  "scoring": "Final state, highest tier met. Detached: the guard's forward lip is off the blade, its clip's barb is out from under the catch, and the least distance between guard and clipper is at least 10 mm. Stowed: the guard rests on the tray's floor with its whole overhead footprint inside the inner floor boundary (1 mm tolerance), no finger pad within 2 mm of it, for 2 s. 0 if the guard is not detached, or if the clipper, guard or tray fell off the table at any time. 0.5 if detached but not stowed (it may still be held). 1.0 if detached and stowed. Holding the clipper is allowed; no clipper pose, arm pose or hand assignment is scored.",
+  "run_limit": "2,400 steps (2 minutes at 20 Hz)",
+  "reset_notes": "Inspect the clipper and guard. Refit the same guard: forward lip and hook over the blade's tip first, then press the back down until the clip snaps under the catch. Check both are seated; a loose or pre-released guard is an invalid reset. Restore the clipper's marked pose and empty the tray.",
+  "fidelity": "Estimates, not measurements: no Wahl clipper or guard was measured. Rigid boxes. Clipper, blade and catch are one body, so they cannot break. The guard is a free body; its metal clip is a hinged, sprung piece (0.05 N m/rad, preloaded) whose barb sits under the catch: a snap fit that springs open when the guard's back is tipped up and blocks a straight forward pull. No joint, weld or release rule holds the guard. Demo checked in PyBullet (check_demo.py), not yet in Isaac Sim.",
+  "scores": "Dream-1 run: TBD; scripted demo: TBD"
+}
