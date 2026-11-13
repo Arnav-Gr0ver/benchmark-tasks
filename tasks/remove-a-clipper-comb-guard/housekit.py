@@ -480,7 +480,7 @@ def _apply_efforts(environment) -> None:
     base = environment.unwrapped
     for name in set(_EFFORTS) | _APPLIED:
         spec = _MECHS.get(name)
-        if spec is None:
+        if spec is None or not spec.joints:          # only jointed Mechs are articulations with joints to drive
             continue
         asset = base.scene[name]
         ids = _joint_ids(asset, spec)
@@ -522,7 +522,7 @@ def _patch_embodiment(ie) -> None:
 
 def _reset_targets(environment) -> None:
     _EFFORTS.clear()
-    _APPLIED.update(_MECHS)
+    _APPLIED.update(n for n, s in _MECHS.items() if s.joints)
     _apply_efforts(environment)
     _set_targets(environment)
 
