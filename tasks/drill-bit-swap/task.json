@@ -1,0 +1,19 @@
+{
+  "title": "Replace the bit in a cordless drill",
+  "category": "Societal relevance",
+  "keywords": [
+    "tool preparation",
+    "keyless chuck",
+    "bit replacement",
+    "coordinated manipulation",
+    "retention"
+  ],
+  "instruction": "Replace the installed drill bit with the larger bit from the rack. Leave the old bit in the tray and the drill on the table with the new bit securely held in its chuck.",
+  "context": "Changing bits is a routine step in home repair and workshop work: one drill takes different bits for successive jobs. Here the drill is loose on the table and its keyless chuck has three jaws driven by a turning sleeve, so the robot must steady the tool, loosen the chuck, take the old bit out, open the jaws wider for the 6 mm bit, align it and tighten it until it holds under a pull. No powered drilling.",
+  "setup": "Positions in cm from the midpoint between the two arm bases, on the table (x forward, y left); heights above the table. A compact cordless drill (battery removed, 1.0 kg, teal) lies on its side, loose, its chuck axis 3.5 cm up along x pointing away from the robot, handle toward +y. Chuck: a 36 mm sleeve (x 22.7 to 27.2) and three steel jaws (x 27.2 to 29.4) opening 1 to 10.4 mm. A 4 mm DIN 338 jobber bit (75 mm, steel) is clamped 19 mm deep. A 6 mm jobber bit (93 mm, gold TiN) stands shank-down in a wooden rack socket at x 29, y 17.5, leaning 45 degrees away from the robot. An empty tray (11 x 5 cm inside, walls 1 cm tall) is at x 37, y 10. Exact geometry in chuck.py and task.py.",
+  "scoring": "Scored at the end. 0 if the old bit is still between the jaws or anything fell off the table. 0.25 old bit fully out. 0.5 also the 6 mm shank 14 to 22.5 mm into the jaws, within 15 degrees and 3 mm of the axis (may be held). 0.75 also all fingers 30 mm clear of drill and new bit, both still 2 s (2 mm, 2 degrees), and the bit passes the retention test: 50 N axial pull (0.5 s ramp, 1 s hold, 0.5 s unload, 1 s watch) on the bit, drill held by its sleeve, slip at most 1 mm, still seated. 1.0 also the old bit let go and lying inside the tray, and the drill lying on the table. A failed test caps at 0.5.",
+  "run_limit": "3,600 steps (3 minutes at 20 Hz): the release watch and retention test need the last 100",
+  "reset_notes": "Put the 4 mm bit 19 mm into the open chuck, close the sleeve by hand until the jaws stop and give it a firm final twist; check it passes the same 50 N pull (bash run.sh pretest does this in simulation). Stand the 6 mm bit in the rack, empty the tray.",
+  "fidelity": "The sleeve, jaws and body are one articulation; the sleeve turns freely on a hinge and a scripted thread converts its turning into jaw travel (5 mm radius per turn), never back-driven, clamping each jaw with at most 150 N. The bit is held only by jaw friction (0.3). The pull is a real applied force. PyBullet check (check_physics.py): four closing strokes hold under 50 N (0.02 mm slip); two, or a barely snug third, pull out.",
+  "scores": "Dream-1 run: TBD; demo: TBD"
+}
