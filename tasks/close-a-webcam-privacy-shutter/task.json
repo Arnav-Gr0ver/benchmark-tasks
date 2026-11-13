@@ -1,0 +1,20 @@
+{
+  "title": "Close a mounted webcam's privacy shutter",
+  "category": "Societal relatability",
+  "keywords": [
+    "webcam",
+    "privacy shutter",
+    "slider",
+    "small control",
+    "mounted device",
+    "household"
+  ],
+  "instruction": "Close the webcam's privacy shutter. Leave the webcam attached to its monitor.",
+  "context": "After a video call, people can close a webcam's physical privacy shutter to cover the lens while leaving the camera mounted for the next call. This task completes that familiar privacy-control action: the built-in shutter fully covers the lens and stays closed after release, while the webcam remains attached to its monitor.",
+  "setup": "Mat coordinates in mm: origin at the mat's centre (30 cm in front of the midpoint between the arm bases), x to the robot's right, y away from the robot, z up from the mat's top (the mat is 2 mm thick). A 600 x 400 x 2 mm silicone mat. A 7-inch monitor fixed to the table: panel 172 wide x 110 tall x 10 thick, centred at x 0, its front face at y 0, bottom edge at z 1, top edge at z 111, on a foot behind it. A Logitech C925e-type webcam (170 g) sits on the panel's top edge by its own clip, lens toward the robot: body 126 wide x 30 deep x 30 tall, centred at x 0, front face at y -12, underside at z 114; lens centre at x 0, z 129, aperture 9 mm across. Shutter: a 16 wide x 20 tall x 2 thick opaque plate just in front of the body's face, starting fully open with its centre at x -16 (to the robot's left of the lens); it slides 18 mm toward +x to its closing stop. Its tab (5 along the slide x 4 x 5 tall) stands above the body's top front edge, top at z 149.5. No cable, tray or other object. Arms start in the ready pose. All webcam and monitor part sizes are estimates (see README).",
+  "scoring": "Final state. C is the fraction of the lens aperture (a 9 mm circle) covered by the shutter plate, from the plate's position; for a released shutter the lowest C over the last 2 s. 0 if the webcam came off its monitor at any time (clip no longer over the panel's top edge: moved more than 4 mm front to back, lifted 5 mm, or tipped 20 degrees), if anything fell off the table, or if C < 0.25. 0.5 if the webcam is attached and 0.25 <= C < 1. 0.75 if C = 1 but a finger is still on the webcam's shutter or body, or C = 1 has not lasted 2 s after release. 1.0 if C = 1 with no finger contact throughout 2 s and the webcam is still attached. Webcam tilt is not scored; no arm pose is required.",
+  "run_limit": "2,400 steps (2 minutes at 20 Hz)",
+  "reset_notes": "Seat the webcam's clip on the monitor's top edge at its marked position, slide the shutter fully open to its stop, and check the tab is in its open position. Inspect the stops.",
+  "fidelity": "Estimates, not measurements: no physical C925e or monitor was measured. Rigid boxes. The shutter is a plate on a sliding joint with end stops; viscous damping (4 N s/m) stands in for the slider's friction, with no detent. The webcam is a free 170 g body held only by its clip's shape over the fixed monitor's top edge. Cable omitted. C comes from the slide position and the plate and aperture geometry. Demo checked in PyBullet (check_demo.py), not yet in Isaac Sim.",
+  "scores": "Dream-1 run: TBD; scripted demo: TBD"
+}
